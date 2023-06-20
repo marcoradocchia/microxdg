@@ -5,14 +5,18 @@ use std::{error, ffi::OsString, fmt, path::PathBuf};
 pub enum XdgError {
     /// Unable to retrieve user's home directory.
     HomeNotFound,
-    /// XDG environment variable set to a relative path.
+    /// XDG environment variable contains a relative path.
     EnvVarRelativePath {
+        /// XDG environment variable key (variable name).
         env_var_key: &'static str,
-        env_var_val: PathBuf,
+        /// XDG environment variable's relative path.
+        path: PathBuf,
     },
     /// XDG Environment variable set to invalid unicode.
     InvalidUnicode {
+        /// XDG environment variable key (variable name).
         env_var_key: &'static str,
+        /// XDG environment variable value.
         env_var_val: OsString,
     },
 }
@@ -27,10 +31,10 @@ impl fmt::Display for XdgError {
             ),
             XdgError::EnvVarRelativePath {
                 env_var_key,
-                env_var_val,
+                path: env_var_val,
             } => write!(
                 f,
-                "environment variable '{env_var_key}' set to relative \
+                "environment variable '{env_var_key}' contains a relative \
                     path '{env_var_val}'",
                 env_var_val = env_var_val.display()
             ),
