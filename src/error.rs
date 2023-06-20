@@ -29,14 +29,12 @@ impl fmt::Display for XdgError {
                 "unable to locate user's home directory, \
                     neither HOME or USER environment variables set"
             ),
-            XdgError::EnvVarRelativePath {
-                env_var_key,
-                path: env_var_val,
-            } => write!(
+            XdgError::EnvVarRelativePath { env_var_key, path } => write!(
                 f,
                 "environment variable '{env_var_key}' contains a relative \
-                    path '{env_var_val}'",
-                env_var_val = env_var_val.display()
+                    path '{path}' (paths in XDG environment variables must \
+                    be asbolute)",
+                path = path.display()
             ),
             XdgError::InvalidUnicode {
                 env_var_key,
