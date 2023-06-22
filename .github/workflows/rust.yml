@@ -15,27 +15,55 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-linux:
+  linux-stable:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           profile: minimal
+          components: clippy
           override: true
 
       - name: Build
         run: cargo build --verbose
 
-      - name: Tests
+      - name: Test
         run: cargo test --verbose
 
-  build-macos:
+      - name: Lint
+        run: cargo clippy --verbose
+
+  linux-nightly:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          components: clippy
+          override: true
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Test
+        run: cargo test --verbose
+
+      - name: Lint
+        run: cargo clippy --verbose
+
+  macos-stable:
     runs-on: macos-latest
 
     steps:
@@ -47,10 +75,39 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
+          components: clippy
           override: true
 
       - name: Build
         run: cargo build --verbose
 
-      - name: Tests
+      - name: Test
         run: cargo test --verbose
+
+      - name: Lint
+        run: cargo clippy --verbose
+
+  macos-nightly:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          components: clippy
+          override: true
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Test
+        run: cargo test --verbose
+
+      - name: Lint
+        run: cargo clippy --verbose
+
