@@ -1,10 +1,3 @@
-#![deny(missing_docs)]
-#![deny(rustdoc::broken_intra_doc_links)]
-#![deny(rustdoc::private_intra_doc_links)]
-#![deny(rustdoc::missing_crate_level_docs)]
-#![deny(rustdoc::invalid_codeblock_attributes)]
-#![deny(rustdoc::invalid_html_tags)]
-#![deny(rustdoc::invalid_rust_codeblocks)]
 //! A minimal [_XDG Base Directory Specification_](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)
 //! library for the Rust programming language.
 //! ```rust
@@ -21,6 +14,15 @@
 //! }
 //! ```
 
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
+#![deny(rustdoc::missing_crate_level_docs)]
+#![deny(rustdoc::invalid_codeblock_attributes)]
+#![deny(rustdoc::invalid_html_tags)]
+#![deny(rustdoc::invalid_rust_codeblocks)]
+#![feature(os_str_bytes)]
+
 mod error;
 
 use std::{
@@ -30,40 +32,34 @@ use std::{
 
 pub use error::XdgError;
 
-/// XDG Base Directory Specification's _user-specific_ directories.
-enum XdgUsrDir {
+/// XDG Base Directory Specification's directories.
+enum XdgDir {
     Cache,
     Config,
     Data,
     State,
-    // Runtime,
-    // Executable,
 }
 
-impl XdgUsrDir {
+impl XdgDir {
     /// Returns the XDG environment variable associated to the XDG base
     /// directory.
     fn env_var(&self) -> &'static str {
         match self {
-            XdgUsrDir::Cache => "XDG_CACHE_HOME",
-            XdgUsrDir::Config => "XDG_CONFIG_HOME",
-            XdgUsrDir::Data => "XDG_DATA_HOME",
-            XdgUsrDir::State => "XDG_STATE_HOME",
-            // XdgBaseDir::Runtime => "XDG_RUNTIME_DIR",
-            // XdgBaseDir::Executable => ???,
+            XdgDir::Cache => "XDG_CACHE_HOME",
+            XdgDir::Config => "XDG_CONFIG_HOME",
+            XdgDir::Data => "XDG_DATA_HOME",
+            XdgDir::State => "XDG_STATE_HOME",
         }
     }
 
-    /// Returns the fallback directory in the case the XDG environment variable
-    /// is not set.
+    /// Returns the _user-specific_ fallback directory in the case the XDG
+    /// environment variable is not set.
     fn fallback(&self) -> &'static str {
         match self {
-            XdgUsrDir::Cache => ".cache",
-            XdgUsrDir::Config => ".config",
-            XdgUsrDir::Data => ".local/share",
-            XdgUsrDir::State => ".local/state",
-            // XdgBaseDir::Runtime => ???,
-            // XdgBaseDir::Executable => ".local/bin",
+            XdgDir::Cache => ".cache",
+            XdgDir::Config => ".config",
+            XdgDir::Data => ".local/share",
+            XdgDir::State => ".local/state",
         }
     }
 }
@@ -100,7 +96,23 @@ impl XdgSysDirs {
     }
 }
 
-/// _An implementation of the XDG Base Directory Specification_.
+/// _An implementation of the [XDG Base Directory Specification](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)_.
+///
+/// Allows to retrieve:
+/// - _user-specific_ XDG Base Directories:
+///     - [_cache_](method@Xdg::cache);
+///     - [_configuration_](method@Xdg::config);
+///     - [_data_](method@Xdg::data);
+///     - [_state_](method@Xdg::state);
+///     - [_executable_](method@Xdg::exec);
+///     - [_runtime_](method@Xdg::runtime);
+/// - _system-wide_, preference ordered (the order denotes the importance):
+///     - [_configuration_](method@Xdg::sys_config);
+///     - [_data_](method@Xdg::sys_data).
+///
+/// Each of the base directories methods privileges the relative environment
+/// variable's value and falls back to the corresponding default whenever the
+/// environment variable is not set or set to an empty value.
 ///
 /// # Examples
 ///
@@ -160,12 +172,14 @@ impl Xdg {
     /// `HOME` path.
     #[inline]
     fn new_from_string(home: String) -> Xdg {
-        Xdg { home: home.into() }
+        Xdg {
+            home: PathBuf::from(home),
+        }
     }
 
     /// Constructs a new [`Xdg`] instance.
     ///
-    /// # <span id="xdg-errors">Errors</span>
+    /// # Errors
     ///
     /// This function returns an error if neither `HOME` or `USER` environment
     /// variable is set.
@@ -185,15 +199,14 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// See [`Xdg::new`] function's [Error](#xdg-errors) section.
+    /// This function returns an error if neither `HOME` or `USER` environment
+    /// variable is set.
     pub fn new_app(app_name: &'static str) -> Result<XdgApp, XdgError> {
-        Ok(XdgApp {
-            xdg: Xdg::new()?,
-            name: app_name,
-        })
+        XdgApp::new(app_name)
     }
 
     /// Returns the **home** directory of the user owning the process.
+    #[inline]
     pub fn home(&self) -> &Path {
         &self.home
     }
@@ -204,6 +217,7 @@ impl Xdg {
     ///
     /// This function returns an error if the value represents a relative path.
     /// XDG environment variables must be set to absolute paths.
+    #[inline]
     fn validate_path<S>(env_var_key: &'static str, env_var_val: S) -> Result<PathBuf, XdgError>
     where
         S: Into<String>,
@@ -225,10 +239,10 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the environment variable is set to a path that is not absolute;
-    /// - the environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set a relative path;
+    /// - the XDG environment variable is set to invalid unicode.
     #[inline]
-    fn get_path(&self, dir: XdgUsrDir) -> Result<PathBuf, XdgError> {
+    fn get_path(&self, dir: XdgDir) -> Result<PathBuf, XdgError> {
         let env_var_key = dir.env_var();
         match env::var(env_var_key) {
             // XDG environment variable is set and non-empty.
@@ -250,11 +264,11 @@ impl Xdg {
     /// `$HOME/.cache` if `XDG_CACHE_HOME` is not set or is set to an empty
     /// value.
     ///
-    /// # <span id="cache-errors">Errors</span>
+    /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable contains invalid unicode.
+    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CACHE_HOME` environment variable contains invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -262,13 +276,13 @@ impl Xdg {
     /// # use microxdg::{Xdg, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = Xdg::new()?;
-    /// let cache = xdg.cache()?;
+    /// let cache_dir = xdg.cache()?;
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
     pub fn cache(&self) -> Result<PathBuf, XdgError> {
-        self.get_path(XdgUsrDir::Cache)
+        self.get_path(XdgDir::Cache)
     }
 
     /// Returns the _user-specific_ XDG **configuration** directory specified by
@@ -278,7 +292,9 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_HOME` environment variable contains invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -286,13 +302,13 @@ impl Xdg {
     /// # use microxdg::{Xdg, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = Xdg::new()?;
-    /// let config = xdg.config()?;
+    /// let config_dir = xdg.config()?;
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
     pub fn config(&self) -> Result<PathBuf, XdgError> {
-        self.get_path(XdgUsrDir::Config)
+        self.get_path(XdgDir::Config)
     }
 
     /// Returns the _user-specific_ XDG **data** directory specified by
@@ -302,7 +318,9 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
+    /// - the `XDG_DATA_HOME` environment variable contains invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -310,13 +328,13 @@ impl Xdg {
     /// # use microxdg::{Xdg, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = Xdg::new()?;
-    /// let data = xdg.data()?;
+    /// let data_dir = xdg.data()?;
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
     pub fn data(&self) -> Result<PathBuf, XdgError> {
-        self.get_path(XdgUsrDir::Data)
+        self.get_path(XdgDir::Data)
     }
 
     /// Returns the _user-specific_ XDG **state** directory specified by
@@ -326,7 +344,9 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_STATE_HOME` environment variable contains invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -334,13 +354,76 @@ impl Xdg {
     /// # use microxdg::{Xdg, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = Xdg::new()?;
-    /// let state = xdg.state()?;
+    /// let state_dir = xdg.state()?;
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
     pub fn state(&self) -> Result<PathBuf, XdgError> {
-        self.get_path(XdgUsrDir::State)
+        self.get_path(XdgDir::State)
+    }
+
+    /// Returns the XDG **runtime** directory specified by the
+    /// `XDG_RUNTIME_DIR` environment variable.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the `XDG_RUNTIME_DIR` environment variable is set;
+    /// - `None` if the `XDG_RUNTIME_DIR` environment variable is missing or
+    ///   set to an empty value.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_RUNTIME_DIR` environment variable is set to a relative path;
+    /// - the `XDG_RUNTIME_DIR` environment variable contains invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// match xdg.runtime()? {
+    ///     Some(runtime_dir) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    pub fn runtime(&self) -> Result<Option<PathBuf>, XdgError> {
+        const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";
+
+        match env::var(XDG_RUNTIME_DIR) {
+            // The runtime environment variable is set.
+            Ok(env_var_val) if !env_var_val.is_empty() => Ok(Some(PathBuf::from(env_var_val))),
+            // The runtime environment variable is set but contains invalid unicode.
+            Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
+                env_var_key: XDG_RUNTIME_DIR,
+                env_var_val,
+            }),
+            _ => Ok(None),
+        }
+    }
+
+    /// Returns the _user-specific_ XDG **executable** directory specified by
+    /// `$HOME/.local/bin`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// let exec_dir = xdg.exec();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    pub fn exec(&self) -> PathBuf {
+        self.home.join(".local/bin")
     }
 
     /// Returns the preference-ordered _system-widw_ paths set to a system XDG
@@ -350,8 +433,8 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the environment variable is set to a path that is not absolute;
-    /// - the environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set relative path;
+    /// - the XDG environment variable is set to invalid unicode.
     #[inline]
     fn get_sys_paths(&self, dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
         let env_var_key = dirs.env_var();
@@ -361,6 +444,7 @@ impl Xdg {
                 .split(':')
                 .map(|path_str| Xdg::validate_path(env_var_key, path_str))
                 .collect(),
+            // XDG environment variable is set but contains invalid unicode.
             Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
                 env_var_key,
                 env_var_val,
@@ -383,6 +467,24 @@ impl Xdg {
     /// The order denotes of the directories denotes the importance: the first
     /// directory is the most important, the last directory is the least
     /// important.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_DIRS` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_DIRS` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// let mut config_dirs = xdg.sys_config()?;
+    /// config_dirs.push(xdg.config()?);
+    /// # Ok(())
+    /// # }
+    /// ````
     #[inline]
     pub fn sys_config(&self) -> Result<Vec<PathBuf>, XdgError> {
         self.get_sys_paths(XdgSysDirs::Config)
@@ -397,6 +499,24 @@ impl Xdg {
     ///
     /// Used to search for data files in addition to the `XDG_DATA_HOME`
     /// user-specific base directory.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_DIRS` environment variable is set to a relative path;
+    /// - the `XDG_DATA_DIRS` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// let mut data_dirs = xdg.sys_data()?;
+    /// data_dirs.push(xdg.data()?);
+    /// # Ok(())
+    /// # }
+    /// ````
     #[inline]
     pub fn sys_data(&self) -> Result<Vec<PathBuf>, XdgError> {
         self.get_sys_paths(XdgSysDirs::Data)
@@ -417,7 +537,8 @@ impl XdgApp {
     ///
     /// # Errors
     ///
-    /// See [`Xdg::new`] function's [Error](#xdg-errors) section.
+    /// This function returns an error if neither `HOME` or `USER` environment
+    /// variable is set.
     pub fn new(app_name: &'static str) -> Result<XdgApp, XdgError> {
         Ok(XdgApp {
             xdg: Xdg::new()?,
@@ -425,40 +546,173 @@ impl XdgApp {
         })
     }
 
-    /// TODO: DOCUMENT THIS
+    /// Converts an [`Xdg`] instance to [`XdgApp`].
+    pub fn from_xdg(xdg: Xdg, app_name: &'static str) -> XdgApp {
+        XdgApp {
+            xdg,
+            name: app_name,
+        }
+    }
+
+    /// Returns the **home** directory of the user owning the process.
+    #[inline]
+    pub fn home(&self) -> &Path {
+        self.xdg.home()
+    }
+
+    /// Returns the _user-specific_ XDG **cache** directory specified by
+    /// the `XDG_CACHE_HOME` environment variable. Falls back to
+    /// `$HOME/.cache` if `XDG_CACHE_HOME` is not set or is set to an empty
+    /// value.
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CACHE_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let cache_dir = xdg.cache()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn cache(&self) -> Result<PathBuf, XdgError> {
         self.xdg.cache()
     }
 
-    /// TODO: DOCUMENT THIS
+    /// Returns the _user-specific_ XDG **configuration** directory specified by
+    /// the `XDG_CONFIG_HOME` environment variable. Falls back to
+    /// `$HOME/.config` if `XDG_CONFIG_HOME` is not set or is set to an empty
+    /// value.
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let config_dir = xdg.config()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn config(&self) -> Result<PathBuf, XdgError> {
         self.xdg.config()
     }
 
-    /// TODO: DOCUMENT THIS
+    /// Returns the _user-specific_ XDG **data** directory specified by
+    /// the `XDG_DATA_HOME` environment variable. Falls back to
+    /// `$HOME/.local/share` if `XDG_DATA_HOME` is not set or is set to an
+    /// empty value.
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
+    /// - the `XDG_DATA_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let data_dir = xdg.data()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn data(&self) -> Result<PathBuf, XdgError> {
         self.xdg.data()
     }
 
-    /// TODO: DOCUMENT THIS
+    /// Returns the _user-specific_ XDG **state** directory specified by
+    /// the `XDG_STATE_HOME` environment variable. Falls back to
+    /// `$HOME/.local/state` if `XDG_STATE_HOME` is not set or is set to an
+    /// empty value.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_STATE_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let state_dir = xdg.state()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn state(&self) -> Result<PathBuf, XdgError> {
         self.xdg.state()
+    }
+
+    /// Returns the XDG **runtime** directory specified by the
+    /// `XDG_RUNTIME_DIR` environment variable.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the `XDG_RUNTIME_DIR` environment variable is set;
+    /// - `None` if the `XDG_RUNTIME_DIR` environment variable is missing or
+    ///   set to an empty value.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_RUNTIME_DIR` environment variable is set to a relative path;
+    /// - the `XDG_RUNTIME_DIR` environment variable contains invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.runtime()? {
+    ///     Some(runtime_dir) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn runtime(&self) -> Result<Option<PathBuf>, XdgError> {
+        self.xdg.runtime()
+    }
+
+    /// Returns the _user-specific_ XDG **executable** directory specified by
+    /// `$HOME/.local/bin`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let exec_dir = xdg.exec();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    pub fn exec(&self) -> PathBuf {
+        self.xdg.exec()
     }
 
     /// Returns the user-specific XDG **cache** directory for the
@@ -467,12 +721,27 @@ impl XdgApp {
     /// # Note
     ///
     /// This method uses the XDG cache directory specified by the
-    /// `XDG_CACHE_HOME` if available. Falls back to `$HOME/.cache/<name>`
+    /// `XDG_CACHE_HOME` if available. Falls back to `$HOME/.cache/<app_name>`
     /// if `XDG_CACHE_HOME` is not set or is set to an empty value.
+    ///
+    /// See [`XdgApp::cache`] for further deatils.
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CACHE_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let app_cache_dir = xdg.app_cache()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn app_cache(&self) -> Result<PathBuf, XdgError> {
         let mut cache = self.xdg.cache()?;
@@ -487,12 +756,27 @@ impl XdgApp {
     /// # Note
     ///
     /// This method uses the XDG configuration directory specified by the
-    /// `XDG_CONFIG_HOME` if available. Falls back to `$HOME/.config/<name>`
+    /// `XDG_CONFIG_HOME` if available. Falls back to `$HOME/.config/<app_name>`
     /// if `XDG_CONFIG_HOME` is not set or is set to an empty value.
+    ///
+    /// See [`XdgApp::config`] for further deatils.
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let config_dir = xdg.config()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn app_config(&self) -> Result<PathBuf, XdgError> {
         let mut config = self.xdg.config()?;
@@ -504,15 +788,30 @@ impl XdgApp {
     /// Returns the user-specific XDG **data** directory for the
     /// current application.
     ///
+    /// See [`XdgApp::data`] for further deatils.
+    ///
     /// # Note
     ///
     /// This method uses the XDG state directory specified by the
-    /// `XDG_DATA_HOME` if available. Falls back to `$HOME/.local/share/<name>`
+    /// `XDG_DATA_HOME` if available. Falls back to `$HOME/.local/share/<app_name>`
     /// if `XDG_DATA_HOME` is not set or is set to an empty value.
     ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
+    /// - the `XDG_DATA_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let data_dir = xdg.data()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn app_data(&self) -> Result<PathBuf, XdgError> {
         let mut data = self.xdg.data()?;
@@ -530,9 +829,24 @@ impl XdgApp {
     /// `XDG_STATE_HOME` if available. Falls back to `$HOME/.local/state/<name>`
     /// if `XDG_STATE_HOME` is not set or is set to an empty value.
     ///
+    /// See [`XdgApp::state`] for further deatils.
+    ///
     /// # Errors
     ///
-    /// See [`Xdg::cache`] method's [Errors](#cache-errors) section.
+    /// This method returns an error in the following cases:
+    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_STATE_HOME` environment variable contains invalid unicode.
+    ///
+    /// # Exapmles
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// let state_dir = xdg.state()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
     pub fn app_state(&self) -> Result<PathBuf, XdgError> {
         let mut state = self.xdg.state()?;
@@ -545,7 +859,9 @@ impl XdgApp {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{env, path::Path};
+    use std::{env, ffi::OsStr, path::Path};
+
+    const INVALID_UNICODE_BYTES: [u8; 4] = [0xF0, 0x90, 0x80, 0x67];
 
     #[test]
     fn new_xdg() {
@@ -566,7 +882,7 @@ mod test {
     }
 
     #[test]
-    fn base_dirs_usr() {
+    fn usr_base_dirs() -> Result<(), XdgError> {
         env::remove_var("XDG_CACHE_HOME");
         env::remove_var("XDG_CONFIG_HOME");
         env::remove_var("XDG_DATA_HOME");
@@ -575,34 +891,103 @@ mod test {
         env::set_var("HOME", "/home/user1");
         env::set_var("USER", "user1");
 
-        let xdg = Xdg::new().unwrap();
+        let xdg = Xdg::new()?;
         assert_eq!(Path::new("/home/user1"), xdg.home());
-        assert_eq!(Path::new("/home/user1/.cache"), xdg.cache().unwrap());
-        assert_eq!(Path::new("/home/user1/.config"), xdg.config().unwrap());
-        assert_eq!(Path::new("/home/user1/.local/share"), xdg.data().unwrap());
-        assert_eq!(Path::new("/home/user1/.local/state"), xdg.state().unwrap());
+        assert_eq!(Path::new("/home/user1/.cache"), xdg.cache()?);
+        assert_eq!(Path::new("/home/user1/.config"), xdg.config()?);
+        assert_eq!(Path::new("/home/user1/.local/share"), xdg.data()?);
+        assert_eq!(Path::new("/home/user1/.local/state"), xdg.state()?);
 
         env::set_var("XDG_CACHE_HOME", "/home/user2/.cache");
         env::set_var("XDG_CONFIG_HOME", "/home/user2/.config");
         env::set_var("XDG_DATA_HOME", "/home/user2/.local/share");
         env::set_var("XDG_STATE_HOME", "/home/user2/.local/state");
-        assert_eq!(Path::new("/home/user2/.cache"), xdg.cache().unwrap());
-        assert_eq!(Path::new("/home/user2/.config"), xdg.config().unwrap());
-        assert_eq!(Path::new("/home/user2/.local/share"), xdg.data().unwrap());
-        assert_eq!(Path::new("/home/user2/.local/state"), xdg.state().unwrap());
+        assert_eq!(Path::new("/home/user2/.cache"), xdg.cache()?);
+        assert_eq!(Path::new("/home/user2/.config"), xdg.config()?);
+        assert_eq!(Path::new("/home/user2/.local/share"), xdg.data()?);
+        assert_eq!(Path::new("/home/user2/.local/state"), xdg.state()?);
 
         env::set_var("XDG_CACHE_HOME", "");
         env::set_var("XDG_CONFIG_HOME", "");
         env::set_var("XDG_DATA_HOME", "");
         env::set_var("XDG_STATE_HOME", "");
-        assert_eq!(Path::new("/home/user1/.cache"), xdg.cache().unwrap());
-        assert_eq!(Path::new("/home/user1/.config"), xdg.config().unwrap());
-        assert_eq!(Path::new("/home/user1/.local/share"), xdg.data().unwrap());
-        assert_eq!(Path::new("/home/user1/.local/state"), xdg.state().unwrap());
+        assert_eq!(Path::new("/home/user1/.cache"), xdg.cache()?);
+        assert_eq!(Path::new("/home/user1/.config"), xdg.config()?);
+        assert_eq!(Path::new("/home/user1/.local/share"), xdg.data()?);
+        assert_eq!(Path::new("/home/user1/.local/state"), xdg.state()?);
+
+        env::set_var("XDG_CACHE_HOME", "./cache");
+        env::set_var("XDG_CONFIG_HOME", "./config");
+        env::set_var("XDG_DATA_HOME", "./data");
+        env::set_var("XDG_STATE_HOME", "./state");
+        assert_eq!(
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_CACHE_HOME",
+                path: PathBuf::from("./cache")
+            },
+            xdg.cache().unwrap_err()
+        );
+        assert_eq!(
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_CONFIG_HOME",
+                path: PathBuf::from("./config")
+            },
+            xdg.config().unwrap_err()
+        );
+        assert_eq!(
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_DATA_HOME",
+                path: PathBuf::from("./data")
+            },
+            xdg.data().unwrap_err()
+        );
+        assert_eq!(
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_STATE_HOME",
+                path: PathBuf::from("./state")
+            },
+            xdg.state().unwrap_err()
+        );
+
+        let invalid_unicode = unsafe { OsStr::from_os_str_bytes_unchecked(&INVALID_UNICODE_BYTES) };
+        env::set_var("XDG_CACHE_HOME", invalid_unicode);
+        env::set_var("XDG_CONFIG_HOME", invalid_unicode);
+        env::set_var("XDG_DATA_HOME", invalid_unicode);
+        env::set_var("XDG_STATE_HOME", invalid_unicode);
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_CACHE_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.cache().unwrap_err(),
+        );
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_CONFIG_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.config().unwrap_err(),
+        );
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_DATA_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.data().unwrap_err(),
+        );
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_STATE_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.state().unwrap_err(),
+        );
+
+        Ok(())
     }
 
     #[test]
-    fn app_dirs_usr() {
+    fn usr_app_dirs() -> Result<(), XdgError> {
         env::remove_var("XDG_CACHE_HOME");
         env::remove_var("XDG_CONFIG_HOME");
         env::remove_var("XDG_DATA_HOME");
@@ -611,76 +996,192 @@ mod test {
         env::set_var("HOME", "/home/user1");
         env::set_var("USER", "user1");
 
-        let xdg = Xdg::new_app("my_app").unwrap();
+        let xdg = XdgApp::new("app_name")?;
+        assert_eq!(Path::new("/home/user1/.cache/app_name"), xdg.app_cache()?);
+        assert_eq!(Path::new("/home/user1/.config/app_name"), xdg.app_config()?);
         assert_eq!(
-            Path::new("/home/user1/.cache/my_app"),
-            xdg.app_cache().unwrap()
+            Path::new("/home/user1/.local/share/app_name"),
+            xdg.app_data()?
         );
         assert_eq!(
-            Path::new("/home/user1/.config/my_app"),
-            xdg.app_config().unwrap()
-        );
-        assert_eq!(
-            Path::new("/home/user1/.local/share/my_app"),
-            xdg.app_data().unwrap()
-        );
-        assert_eq!(
-            Path::new("/home/user1/.local/state/my_app"),
-            xdg.app_state().unwrap()
+            Path::new("/home/user1/.local/state/app_name"),
+            xdg.app_state()?
         );
 
         env::set_var("XDG_CACHE_HOME", "/home/user2/.cache");
         env::set_var("XDG_CONFIG_HOME", "/home/user2/.config");
         env::set_var("XDG_DATA_HOME", "/home/user2/.local/share");
         env::set_var("XDG_STATE_HOME", "/home/user2/.local/state");
-        let xdg = Xdg::new_app("my_app").unwrap();
+        assert_eq!(Path::new("/home/user2/.cache/app_name"), xdg.app_cache()?);
+        assert_eq!(Path::new("/home/user2/.config/app_name"), xdg.app_config()?);
         assert_eq!(
-            Path::new("/home/user2/.cache/my_app"),
-            xdg.app_cache().unwrap()
+            Path::new("/home/user2/.local/share/app_name"),
+            xdg.app_data()?
         );
         assert_eq!(
-            Path::new("/home/user2/.config/my_app"),
-            xdg.app_config().unwrap()
-        );
-        assert_eq!(
-            Path::new("/home/user2/.local/share/my_app"),
-            xdg.app_data().unwrap()
-        );
-        assert_eq!(
-            Path::new("/home/user2/.local/state/my_app"),
-            xdg.app_state().unwrap()
+            Path::new("/home/user2/.local/state/app_name"),
+            xdg.app_state()?
         );
 
         env::set_var("XDG_CACHE_HOME", "");
         env::set_var("XDG_CONFIG_HOME", "");
         env::set_var("XDG_DATA_HOME", "");
         env::set_var("XDG_STATE_HOME", "");
-        let xdg = Xdg::new_app("my_app").unwrap();
+        assert_eq!(Path::new("/home/user1/.cache/app_name"), xdg.app_cache()?);
+        assert_eq!(Path::new("/home/user1/.config/app_name"), xdg.app_config()?);
         assert_eq!(
-            Path::new("/home/user1/.cache/my_app"),
-            xdg.app_cache().unwrap()
+            Path::new("/home/user1/.local/share/app_name"),
+            xdg.app_data()?
         );
         assert_eq!(
-            Path::new("/home/user1/.config/my_app"),
-            xdg.app_config().unwrap()
+            Path::new("/home/user1/.local/state/app_name"),
+            xdg.app_state()?
+        );
+
+        env::set_var("XDG_CACHE_HOME", "./app_name/cache");
+        env::set_var("XDG_CONFIG_HOME", "./app_name/config");
+        env::set_var("XDG_DATA_HOME", "./app_name/data");
+        env::set_var("XDG_STATE_HOME", "./app_name/state");
+        assert_eq!(
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_CACHE_HOME",
+                path: PathBuf::from("./app_name/cache")
+            },
+            xdg.cache().unwrap_err()
         );
         assert_eq!(
-            Path::new("/home/user1/.local/share/my_app"),
-            xdg.app_data().unwrap()
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_CONFIG_HOME",
+                path: PathBuf::from("./app_name/config")
+            },
+            xdg.config().unwrap_err()
         );
         assert_eq!(
-            Path::new("/home/user1/.local/state/my_app"),
-            xdg.app_state().unwrap()
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_DATA_HOME",
+                path: PathBuf::from("./app_name/data")
+            },
+            xdg.data().unwrap_err()
         );
+        assert_eq!(
+            XdgError::EnvVarRelativePath {
+                env_var_key: "XDG_STATE_HOME",
+                path: PathBuf::from("./app_name/state")
+            },
+            xdg.state().unwrap_err()
+        );
+
+        let invalid_unicode = unsafe { OsStr::from_os_str_bytes_unchecked(&INVALID_UNICODE_BYTES) };
+        env::set_var("XDG_CACHE_HOME", invalid_unicode);
+        env::set_var("XDG_CONFIG_HOME", invalid_unicode);
+        env::set_var("XDG_DATA_HOME", invalid_unicode);
+        env::set_var("XDG_STATE_HOME", invalid_unicode);
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_CACHE_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.cache().unwrap_err(),
+        );
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_CONFIG_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.config().unwrap_err(),
+        );
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_DATA_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.data().unwrap_err(),
+        );
+        assert_eq!(
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_STATE_HOME",
+                env_var_val: invalid_unicode.to_os_string(),
+            },
+            xdg.state().unwrap_err(),
+        );
+
+        Ok(())
     }
 
     #[test]
-    fn base_dirs_sys() {
-        todo!()
+    fn runtime_dir() -> Result<(), XdgError> {
+        // TODO
+
+        Ok(())
     }
 
     #[test]
-    fn app_dirs_sys() {
-        todo!()
+    fn exec_dir() -> Result<(), XdgError> {
+        // TODO
+
+        Ok(())
+    }
+
+    #[test]
+    fn sys_base_dirs() -> Result<(), XdgError> {
+        env::remove_var("XDG_CONFIG_DIRS");
+        env::remove_var("XDG_DATA_DIRS");
+
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let xdg = Xdg::new()?;
+        assert_eq!(vec![PathBuf::from("/etc/xdg")], xdg.sys_config()?);
+        assert_eq!(
+            vec![
+                PathBuf::from("/usr/local/share"),
+                PathBuf::from("/usr/share")
+            ],
+            xdg.sys_data()?,
+        );
+
+        env::set_var(
+            "XDG_CONFIG_DIRS",
+            "/config/dir1:/config/dir2:/config/dir3:/config/dir4",
+        );
+        env::set_var(
+            "XDG_DATA_DIRS",
+            "/data/dir1:/data/dir2:/data/dir3:/data/dir4",
+        );
+        assert_eq!(
+            vec![
+                PathBuf::from("/config/dir1"),
+                PathBuf::from("/config/dir2"),
+                PathBuf::from("/config/dir3"),
+                PathBuf::from("/config/dir4"),
+            ],
+            xdg.sys_config()?,
+        );
+        assert_eq!(
+            vec![
+                PathBuf::from("/data/dir1"),
+                PathBuf::from("/data/dir2"),
+                PathBuf::from("/data/dir3"),
+                PathBuf::from("/data/dir4"),
+            ],
+            xdg.sys_data()?,
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn sys_app_dirs() -> Result<(), XdgError> {
+        env::remove_var("XDG_CONFIG_DIRS");
+        env::remove_var("XDG_DATA_DIRS");
+
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let xdg = XdgApp::new("app_name");
+
+        // TODO: insert assertions
+
+        Ok(())
     }
 }

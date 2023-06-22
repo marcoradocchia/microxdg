@@ -41,8 +41,8 @@ impl fmt::Display for XdgError {
                 env_var_val,
             } => write!(
                 f,
-                "environment variable '{env_var_key}' set to invalid \
-                    unicode value '{env_var_val:?}'"
+                "environment variable '{env_var_key}' contains invalid unicode \
+                    {env_var_val:?}",
             ),
         }
     }
