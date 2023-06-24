@@ -565,7 +565,8 @@ impl Xdg {
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a regular file.
+    /// This method does not guarantee either the path exists or points to a
+    /// regular file.
     ///
     /// # Errors
     ///
@@ -597,7 +598,8 @@ impl Xdg {
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a regular file.
+    /// This method does not guarantee either the path exists or points to a
+    /// regular file.
     ///
     /// # Errors
     ///
@@ -629,7 +631,8 @@ impl Xdg {
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a regular file.
+    /// This method does not guarantee either the path exists or points to a
+    /// regular file.
     ///
     /// # Errors
     ///
@@ -661,7 +664,8 @@ impl Xdg {
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a regular file.
+    /// This method does not guarantee either the path exists or points to a
+    /// regular file.
     ///
     /// # Errors
     ///
