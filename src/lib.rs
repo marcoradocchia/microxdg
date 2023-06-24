@@ -64,6 +64,15 @@ impl XdgDir {
             XdgDir::State => ".local/state",
         }
     }
+
+    /// Returns the associated variant of [`XdgSysDirs`].
+    fn to_sys(self) -> Option<XdgSysDirs> {
+        match self {
+            XdgDir::Cache | XdgDir::State => None,
+            XdgDir::Config => Some(XdgSysDirs::Config),
+            XdgDir::Data => Some(XdgSysDirs::Data),
+        }
+    }
 }
 
 /// XDG Base Directory Specification's _system-wide_ directories.
@@ -109,7 +118,7 @@ impl XdgSysDirs {
 ///     - [_state_](method@Xdg::state);
 ///     - [_executable_](method@Xdg::exec);
 ///     - [_runtime_](method@Xdg::runtime);
-/// - _system-wide_, preference ordered (order denotes importance):
+/// - _system-wide_, preference-ordered (order denotes importance):
 ///     - [_configuration_](method@Xdg::sys_config);
 ///     - [_data_](method@Xdg::sys_data).
 ///
@@ -247,7 +256,7 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set a relative path;
+    /// - the XDG environment variable is set to a relative path;
     /// - the XDG environment variable is set to invalid unicode.
     #[inline]
     fn get_dir_path(&self, dir: XdgDir) -> Result<PathBuf, XdgError> {
@@ -444,7 +453,7 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set relative path;
+    /// - the XDG environment variable is set to a relative path;
     /// - the XDG environment variable is set to invalid unicode.
     #[inline]
     fn get_sys_dir_paths(dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
@@ -489,8 +498,7 @@ impl Xdg {
     /// ```rust
     /// # use microxdg::{Xdg, XdgError};
     /// # fn main() -> Result<(), XdgError> {
-    /// let xdg = Xdg::new()?;
-    /// let sys_config_dirs = xdg.sys_config()?;
+    /// let sys_config_dirs = Xdg::sys_config()?;
     /// # Ok(())
     /// # }
     /// ````
@@ -501,8 +509,8 @@ impl Xdg {
 
     /// Returns the system-wide, preference-ordered, XDG **data**
     /// directories specified by the `XDG_DATA_DIRS` environment variable.
-    /// Falls back to `/usr/local/share:/usr/share` if `XDG_DATA_DIRS` is not set or is set to an
-    /// empty value.
+    /// Falls back to `/usr/local/share/:/usr/share/` if `XDG_DATA_DIRS`
+    /// is not set or is set to an empty value.
     ///
     /// # Note
     ///
@@ -523,8 +531,7 @@ impl Xdg {
     /// ```rust
     /// # use microxdg::{Xdg, XdgError};
     /// # fn main() -> Result<(), XdgError> {
-    /// let xdg = Xdg::new()?;
-    /// let sys_data_dirs = xdg.sys_data()?;
+    /// let sys_data_dirs = Xdg::sys_data()?;
     /// # Ok(())
     /// # }
     /// ````
@@ -538,16 +545,17 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set relative path;
+    /// - the XDG environment variable is set to a relative path;
     /// - the XDG environment variable is set to invalid unicode.
     #[inline]
     fn get_file_path<P>(&self, dir: XdgDir, file: P) -> Result<PathBuf, XdgError>
     where
         P: AsRef<Path>,
     {
-        let mut dir = self.get_dir_path(dir)?;
-        dir.push(file);
-        Ok(dir)
+        let mut path = self.get_dir_path(dir)?;
+        path.push(file);
+
+        Ok(path)
     }
 
     /// Returns the _user-specific_ XDG **cache** file as
@@ -677,6 +685,203 @@ impl Xdg {
     {
         self.get_file_path(XdgDir::State, file)
     }
+
+    /// Searches for `file` inside a _user-specific_ XDG base directory.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the file is found inside the specified XDG directory;
+    /// - `None` if the file is **not** found inside the specified XDG directory.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the XDG environment variable is set to a relative path;
+    /// - the XDG environment variable is set to invalid unicode.
+    #[inline]
+    fn search_usr_file<P>(&self, dir: XdgDir, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        let mut usr_path = self.get_dir_path(dir)?;
+        usr_path.push(&file);
+        if usr_path.is_file() {
+            return Ok(Some(usr_path));
+        }
+
+        Ok(None)
+    }
+
+    /// Searches for `file` inside a _system-wide_, preference-ordered, set of
+    /// XDG directories.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the file is found inside one of the preference-ordered set
+    ///   of XDG system directories;
+    /// - `None` if the file is **not** found inside any of the
+    ///   preference-ordered set of system XDG directory.
+    ///
+    /// # Errors
+    ///
+    /// This funciton returns an error in the following cases:
+    /// - the XDG environment variable is set to a relative path;
+    /// - the XDG environment variable is set to invalid unicode.
+    #[inline]
+    fn search_sys_file<P>(dirs: XdgSysDirs, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        for mut sys_path in Xdg::get_sys_dir_paths(dirs)? {
+            sys_path.push(&file);
+            if sys_path.is_file() {
+                return Ok(Some(sys_path));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Searches for `file` inside XDG directories in the following order:
+    /// - _user-specific_ XDG base directory;
+    /// - _system-wide_, preference-ordered, set of XDG directory.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the file is found inside one of the XDG directories;   
+    /// - `None` if the file is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set to
+    ///   a relative path;
+    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set to
+    ///   invalid unicode.
+    #[inline]
+    fn search_file<P>(&self, dir: XdgDir, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        if let Some(file_path) = self.search_usr_file(dir, &file)? {
+            return Ok(Some(file_path));
+        }
+
+        if let Some(sys_dirs) = dir.to_sys() {
+            if let Some(file_path) = Xdg::search_sys_file(sys_dirs, &file)? {
+                return Ok(Some(file_path));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **cache** directory
+    /// specified by the`XDG_CACHE_HOME` environment variable.
+    /// The search falls back to `$HOME/.cache` if `XDG_CACHE_HOME` is not set
+    /// or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    pub fn search_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_file(XdgDir::Cache, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **configuration**
+    /// directory specified by the`XDG_CONFIG_HOME` environment variable.
+    /// If `XDG_CONFIG_HOME` is not set or is set to an empty value, the
+    /// search falls back to `$HOME/.config`.
+    ///
+    /// If `file` is not found inside the _user-specific_ XDG directory, a
+    /// lookup is performed on the _system-wide_, preference ordered
+    /// directories specified by the `XDG_CONFIG_DIRS`.
+    /// If `XDG_CONFIG_DIRS` is not set or is set to an empty value, the
+    /// search falls back to `/etc/xdg`.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    pub fn search_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_file(XdgDir::Config, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **data**
+    /// directory specified by the`XDG_DATA_HOME` environment variable.
+    /// If `XDG_DATA_HOME` is not set or is set to an empty value, the
+    /// search falls back to `$HOME/.local/share`.
+    ///
+    /// If `file` is not found inside the _user-specific_ XDG directory, a
+    /// lookup is performed on the _system-wide_, preference ordered
+    /// directories specified by the `XDG_DATA_DIRS`.
+    /// If `XDG_DATA_DIRS` is not set or is set to an empty value, the
+    /// search falls back to `/usr/local/share/:/usr/share/`.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
+    /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    pub fn search_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_file(XdgDir::Data, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **state** directory
+    /// specified by the`XDG_STATE_HOME` environment variable.
+    /// The search falls back to `$HOME/.local/state` if `XDG_STATE_HOME` is
+    /// not set or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    pub fn search_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_file(XdgDir::State, file)
+    }
 }
 
 #[cfg(test)]
@@ -697,20 +902,10 @@ mod test {
         env::set_var("USER", "user2");
         assert_eq!(Path::new("/home/user1"), Xdg::new()?.home());
         assert_eq!(Path::new("/home/user1"), Xdg::new_app("app_name")?.home());
-        assert_eq!(Path::new("/home/user1"), XdgApp::new("app_name")?.home());
-        assert_eq!(
-            Path::new("/home/user1"),
-            XdgApp::from_xdg(Xdg::new()?, "app_name").home()
-        );
 
         env::remove_var("HOME");
         assert_eq!(Path::new("/home/user2"), Xdg::new()?.home());
         assert_eq!(Path::new("/home/user2"), Xdg::new_app("app_name")?.home());
-        assert_eq!(Path::new("/home/user2"), XdgApp::new("app_name")?.home());
-        assert_eq!(
-            Path::new("/home/user2"),
-            XdgApp::from_xdg(Xdg::new()?, "app_name").home()
-        );
 
         env::remove_var("USER");
         assert_eq!(XdgError::HomeNotFound, Xdg::new().unwrap_err());
@@ -718,7 +913,6 @@ mod test {
             XdgError::HomeNotFound,
             Xdg::new_app("app_name").unwrap_err()
         );
-        assert_eq!(XdgError::HomeNotFound, XdgApp::new("app_name").unwrap_err());
 
         Ok(())
     }
@@ -853,128 +1047,6 @@ mod test {
     }
 
     #[test]
-    fn usr_app_dirs() -> Result<(), XdgError> {
-        env::remove_var("XDG_CACHE_HOME");
-        env::remove_var("XDG_CONFIG_HOME");
-        env::remove_var("XDG_DATA_HOME");
-        env::remove_var("XDG_STATE_HOME");
-
-        env::set_var("HOME", "/home/user1");
-        env::set_var("USER", "user1");
-
-        let xdg = XdgApp::new("app_name")?;
-        assert_eq!(Path::new("/home/user1/.cache/app_name"), xdg.app_cache()?);
-        assert_eq!(Path::new("/home/user1/.config/app_name"), xdg.app_config()?);
-        assert_eq!(
-            Path::new("/home/user1/.local/share/app_name"),
-            xdg.app_data()?
-        );
-        assert_eq!(
-            Path::new("/home/user1/.local/state/app_name"),
-            xdg.app_state()?
-        );
-
-        env::set_var("XDG_CACHE_HOME", "/home/user2/.cache");
-        env::set_var("XDG_CONFIG_HOME", "/home/user2/.config");
-        env::set_var("XDG_DATA_HOME", "/home/user2/.local/share");
-        env::set_var("XDG_STATE_HOME", "/home/user2/.local/state");
-        assert_eq!(Path::new("/home/user2/.cache/app_name"), xdg.app_cache()?);
-        assert_eq!(Path::new("/home/user2/.config/app_name"), xdg.app_config()?);
-        assert_eq!(
-            Path::new("/home/user2/.local/share/app_name"),
-            xdg.app_data()?
-        );
-        assert_eq!(
-            Path::new("/home/user2/.local/state/app_name"),
-            xdg.app_state()?
-        );
-
-        env::set_var("XDG_CACHE_HOME", "");
-        env::set_var("XDG_CONFIG_HOME", "");
-        env::set_var("XDG_DATA_HOME", "");
-        env::set_var("XDG_STATE_HOME", "");
-        assert_eq!(Path::new("/home/user1/.cache/app_name"), xdg.app_cache()?);
-        assert_eq!(Path::new("/home/user1/.config/app_name"), xdg.app_config()?);
-        assert_eq!(
-            Path::new("/home/user1/.local/share/app_name"),
-            xdg.app_data()?
-        );
-        assert_eq!(
-            Path::new("/home/user1/.local/state/app_name"),
-            xdg.app_state()?
-        );
-
-        env::set_var("XDG_CACHE_HOME", "./app_name/cache");
-        env::set_var("XDG_CONFIG_HOME", "./app_name/config");
-        env::set_var("XDG_DATA_HOME", "./app_name/data");
-        env::set_var("XDG_STATE_HOME", "./app_name/state");
-        assert_eq!(
-            XdgError::EnvVarRelativePath {
-                env_var_key: "XDG_CACHE_HOME",
-                path: PathBuf::from("./app_name/cache")
-            },
-            xdg.app_cache().unwrap_err()
-        );
-        assert_eq!(
-            XdgError::EnvVarRelativePath {
-                env_var_key: "XDG_CONFIG_HOME",
-                path: PathBuf::from("./app_name/config")
-            },
-            xdg.app_config().unwrap_err()
-        );
-        assert_eq!(
-            XdgError::EnvVarRelativePath {
-                env_var_key: "XDG_DATA_HOME",
-                path: PathBuf::from("./app_name/data")
-            },
-            xdg.app_data().unwrap_err()
-        );
-        assert_eq!(
-            XdgError::EnvVarRelativePath {
-                env_var_key: "XDG_STATE_HOME",
-                path: PathBuf::from("./app_name/state")
-            },
-            xdg.app_state().unwrap_err()
-        );
-
-        let invalid_unicode = OsStr::from_bytes(&INVALID_UNICODE_BYTES);
-        env::set_var("XDG_CACHE_HOME", invalid_unicode);
-        env::set_var("XDG_CONFIG_HOME", invalid_unicode);
-        env::set_var("XDG_DATA_HOME", invalid_unicode);
-        env::set_var("XDG_STATE_HOME", invalid_unicode);
-        assert_eq!(
-            XdgError::InvalidUnicode {
-                env_var_key: "XDG_CACHE_HOME",
-                env_var_val: invalid_unicode.to_os_string(),
-            },
-            xdg.app_cache().unwrap_err(),
-        );
-        assert_eq!(
-            XdgError::InvalidUnicode {
-                env_var_key: "XDG_CONFIG_HOME",
-                env_var_val: invalid_unicode.to_os_string(),
-            },
-            xdg.app_config().unwrap_err(),
-        );
-        assert_eq!(
-            XdgError::InvalidUnicode {
-                env_var_key: "XDG_DATA_HOME",
-                env_var_val: invalid_unicode.to_os_string(),
-            },
-            xdg.app_data().unwrap_err(),
-        );
-        assert_eq!(
-            XdgError::InvalidUnicode {
-                env_var_key: "XDG_STATE_HOME",
-                env_var_val: invalid_unicode.to_os_string(),
-            },
-            xdg.app_state().unwrap_err(),
-        );
-
-        Ok(())
-    }
-
-    #[test]
     fn sys_base_dirs() -> Result<(), XdgError> {
         env::remove_var("XDG_CONFIG_DIRS");
         env::remove_var("XDG_DATA_DIRS");
@@ -1016,58 +1088,6 @@ mod test {
                 PathBuf::from("/data/dir4"),
             ],
             Xdg::sys_data()?,
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn sys_app_dirs() -> Result<(), XdgError> {
-        env::remove_var("XDG_CONFIG_DIRS");
-        env::remove_var("XDG_DATA_DIRS");
-
-        env::set_var("HOME", "/home/user");
-        env::set_var("USER", "user");
-
-        let xdg = XdgApp::new("app_name")?;
-
-        assert_eq!(
-            vec![PathBuf::from("/etc/xdg/app_name")],
-            xdg.app_sys_config()?
-        );
-        assert_eq!(
-            vec![
-                PathBuf::from("/usr/local/share/app_name"),
-                PathBuf::from("/usr/share/app_name")
-            ],
-            xdg.app_sys_data()?,
-        );
-
-        env::set_var(
-            "XDG_CONFIG_DIRS",
-            "/config/dir1:/config/dir2:/config/dir3:/config/dir4",
-        );
-        env::set_var(
-            "XDG_DATA_DIRS",
-            "/data/dir1:/data/dir2:/data/dir3:/data/dir4",
-        );
-        assert_eq!(
-            vec![
-                PathBuf::from("/config/dir1/app_name"),
-                PathBuf::from("/config/dir2/app_name"),
-                PathBuf::from("/config/dir3/app_name"),
-                PathBuf::from("/config/dir4/app_name"),
-            ],
-            xdg.app_sys_config()?,
-        );
-        assert_eq!(
-            vec![
-                PathBuf::from("/data/dir1/app_name"),
-                PathBuf::from("/data/dir2/app_name"),
-                PathBuf::from("/data/dir3/app_name"),
-                PathBuf::from("/data/dir4/app_name"),
-            ],
-            xdg.app_sys_data()?,
         );
 
         Ok(())
