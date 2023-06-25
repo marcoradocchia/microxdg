@@ -723,6 +723,308 @@ impl XdgApp {
     {
         self.get_app_file_path(XdgDir::State, file)
     }
+
+    /// Searches for `file` inside the _user-specific_ XDG **cache** directory
+    /// specified by the`XDG_CACHE_HOME` environment variable.
+    /// The search falls back to `$HOME/.cache` if `XDG_CACHE_HOME` is not set
+    /// or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    pub fn search_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.xdg.search_file(XdgDir::Cache, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **configuration**
+    /// directory specified by the`XDG_CONFIG_HOME` environment variable.
+    /// If `XDG_CONFIG_HOME` is not set or is set to an empty value, the
+    /// search falls back to `$HOME/.config`.
+    ///
+    /// If `file` is not found inside the _user-specific_ XDG directory, a
+    /// lookup is performed on the _system-wide_, preference ordered
+    /// directories specified by the `XDG_CONFIG_DIRS`.
+    /// If `XDG_CONFIG_DIRS` is not set or is set to an empty value, the
+    /// search falls back to `/etc/xdg`.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    pub fn search_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.xdg.search_file(XdgDir::Config, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **data**
+    /// directory specified by the`XDG_DATA_HOME` environment variable.
+    /// If `XDG_DATA_HOME` is not set or is set to an empty value, the
+    /// search falls back to `$HOME/.local/share`.
+    ///
+    /// If `file` is not found inside the _user-specific_ XDG directory, a
+    /// lookup is performed on the _system-wide_, preference ordered
+    /// directories specified by the `XDG_DATA_DIRS`.
+    /// If `XDG_DATA_DIRS` is not set or is set to an empty value, the
+    /// search falls back to `/usr/local/share/:/usr/share/`.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
+    /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    pub fn search_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.xdg.search_file(XdgDir::Data, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **state** directory
+    /// specified by the`XDG_STATE_HOME` environment variable.
+    /// The search falls back to `$HOME/.local/state` if `XDG_STATE_HOME` is
+    /// not set or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG directories;   
+    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    pub fn search_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.xdg.search_file(XdgDir::State, file)
+    }
+
+    /* -----------------------------------------------------------------
+    ---------------------  TODO: SEARCH APP FILES-----------------------
+    ----------------------------------------------------------------- */
+
+    /// Searches for `file` inside a _user-specific_ XDG app subdirectory.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the file is found inside the specified XDG app subdirectory;
+    /// - `None` if the file is **not** found inside the specified XDG app
+    ///   directory.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the XDG environment variable is set to a relative path;
+    /// - the XDG environment variable is set to invalid unicode.
+    #[inline]
+    fn search_app_usr_file<P>(&self, dir: XdgDir, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        let mut usr_path = self.xdg.get_dir_path(dir)?;
+        usr_path.push(self.name);
+        usr_path.push(file);
+
+        if usr_path.is_file() {
+            return Ok(Some(usr_path));
+        }
+
+        Ok(None)
+    }
+
+    /// Searches for `file` inside a _system-wide_, preference-ordered, set of
+    /// XDG app subdirectories.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the file is found inside one of the preference-ordered set
+    ///   of XDG app system subdirectories;
+    /// - `None` if the file is **not** found inside any of the
+    ///   preference-ordered set of XDG app system subdirectory.
+    ///
+    /// # Errors
+    ///
+    /// This funciton returns an error in the following cases:
+    /// - the XDG environment variable is set to a relative path;
+    /// - the XDG environment variable is set to invalid unicode.
+    #[inline]
+    fn search_app_sys_file<P>(&self, dirs: XdgSysDirs, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        for mut sys_path in Xdg::get_sys_dir_paths(dirs)? {
+            sys_path.push(self.name);
+            sys_path.push(&file);
+
+            if sys_path.is_file() {
+                return Ok(Some(sys_path));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Searches for `file` inside XDG app subdirectories in the following order:
+    /// - _user-specific_ XDG app subdirectory;
+    /// - _system-wide_, preference-ordered, set of XDG app subdirectories.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the file is found inside one of the XDG directories;
+    /// - `None` if the file is **not** found inside one of the XDG directories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set to
+    ///   a relative path;
+    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set to
+    ///   invalid unicode.
+    #[inline]
+    fn search_app_file<P>(&self, dir: XdgDir, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        if let Some(file_path) = self.search_app_usr_file(dir, &file)? {
+            return Ok(Some(file_path));
+        }
+
+        if let Some(sys_dirs) = dir.to_sys() {
+            if let Some(file_path) = self.search_app_sys_file(sys_dirs, &file)? {
+                return Ok(Some(file_path));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **cache** app
+    /// subdirectory specified by `$XDG_CACHE_HOME/<app_name>`.
+    /// The search falls back to `$HOME/.cache/<app_name>` if `XDG_CACHE_HOME`
+    /// is not set or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
+    /// - `None` if `file` is **not** found inside one of the XDG app
+    ///   subdirectories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    pub fn search_app_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_app_file(XdgDir::Cache, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **config** app
+    /// subdirectory specified by `$XDG_CONFIG_HOME/<app_name>`.
+    /// The search falls back to `$HOME/.config/<app_name>` if `XDG_CONFIG_HOME`
+    /// is not set or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
+    /// - `None` if `file` is **not** found inside one of the XDG app
+    ///   subdirectories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
+    /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    pub fn search_app_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_app_file(XdgDir::Config, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **data** app
+    /// subdirectory specified by `$XDG_DATA_HOME/<app_name>`.
+    /// The search falls back to `$HOME/.data/<app_name>` if `XDG_DATA_HOME`
+    /// is not set or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
+    /// - `None` if `file` is **not** found inside one of the XDG app
+    ///   subdirectories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
+    /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    pub fn search_app_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_app_file(XdgDir::Data, file)
+    }
+
+    /// Searches for `file` inside the _user-specific_ XDG **state** app
+    /// subdirectory specified by `$XDG_STATE_HOME/<app_name>`.
+    /// The search falls back to `$HOME/.state/<app_name>` if `XDG_STATE_HOME`
+    /// is not set or is set to an empty value.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
+    /// - `None` if `file` is **not** found inside one of the XDG app
+    ///   subdirectories.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
+    /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    pub fn search_app_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
+    where
+        P: AsRef<Path>,
+    {
+        self.search_app_file(XdgDir::State, file)
+    }
 }
 
 #[cfg(test)]

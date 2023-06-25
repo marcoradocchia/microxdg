@@ -709,7 +709,8 @@ impl Xdg {
         P: AsRef<Path>,
     {
         let mut usr_path = self.get_dir_path(dir)?;
-        usr_path.push(&file);
+        usr_path.push(file);
+
         if usr_path.is_file() {
             return Ok(Some(usr_path));
         }
@@ -726,7 +727,7 @@ impl Xdg {
     /// - `Some` if the file is found inside one of the preference-ordered set
     ///   of XDG system directories;
     /// - `None` if the file is **not** found inside any of the
-    ///   preference-ordered set of system XDG directory.
+    ///   preference-ordered set of XDG system directories.
     ///
     /// # Errors
     ///
@@ -740,6 +741,7 @@ impl Xdg {
     {
         for mut sys_path in Xdg::get_sys_dir_paths(dirs)? {
             sys_path.push(&file);
+
             if sys_path.is_file() {
                 return Ok(Some(sys_path));
             }
@@ -750,12 +752,12 @@ impl Xdg {
 
     /// Searches for `file` inside XDG directories in the following order:
     /// - _user-specific_ XDG base directory;
-    /// - _system-wide_, preference-ordered, set of XDG directory.
+    /// - _system-wide_, preference-ordered, set of XDG directories.
     ///
     /// # Note
     ///
     /// This method returns:
-    /// - `Some` if the file is found inside one of the XDG directories;   
+    /// - `Some` if the file is found inside one of the XDG directories;
     /// - `None` if the file is **not** found inside one of the XDG directories.
     ///
     /// # Errors
