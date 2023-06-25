@@ -733,7 +733,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -762,7 +762,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -791,7 +791,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -814,7 +814,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -939,7 +939,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
-    /// - `None` if `file` is **not** found inside one of the XDG app
+    /// - `None` if `file` is **not** found inside any of the XDG app
     ///   subdirectories.
     ///
     /// # Errors
@@ -963,7 +963,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
-    /// - `None` if `file` is **not** found inside one of the XDG app
+    /// - `None` if `file` is **not** found inside any of the XDG app
     ///   subdirectories.
     ///
     /// # Errors
@@ -987,7 +987,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
-    /// - `None` if `file` is **not** found inside one of the XDG app
+    /// - `None` if `file` is **not** found inside any of the XDG app
     ///   subdirectories.
     ///
     /// # Errors
@@ -1011,7 +1011,7 @@ impl XdgApp {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG app subdirectories;   
-    /// - `None` if `file` is **not** found inside one of the XDG app
+    /// - `None` if `file` is **not** found inside any of the XDG app
     ///   subdirectories.
     ///
     /// # Errors

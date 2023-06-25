@@ -794,7 +794,7 @@ impl Xdg {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -823,7 +823,7 @@ impl Xdg {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -852,7 +852,7 @@ impl Xdg {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
@@ -875,7 +875,7 @@ impl Xdg {
     ///
     /// This method returns:
     /// - `Some` if `file` is found inside one of the XDG directories;   
-    /// - `None` if `file` is **not** found inside one of the XDG directories.
+    /// - `None` if `file` is **not** found inside any of the XDG directories.
     ///
     /// # Errors
     ///
