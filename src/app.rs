@@ -25,6 +25,8 @@ use std::path::{Path, PathBuf};
 ///     - [_app configuration_](method@XdgApp::app_sys_config);
 ///     - [_app data_](method@XdgApp::app_sys_data).
 ///
+/// TODO: add table
+///
 /// Each of the base directories methods privileges the relative environment
 /// variable's value and falls back to the corresponding default whenever the
 /// environment variable is not set or set to an empty value.
@@ -740,6 +742,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
     /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_cache_file("file")? {
+    ///     Some(cache_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -769,6 +785,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
     /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_config_file("file")? {
+    ///     Some(config_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -798,6 +828,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
     /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_data_file("file")? {
+    ///     Some(data_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -821,16 +865,26 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
     /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_state_file("file")? {
+    ///     Some(state_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
     {
         self.xdg.search_file(XdgDir::State, file)
     }
-
-    /* -----------------------------------------------------------------
-    ---------------------  TODO: SEARCH APP FILES-----------------------
-    ----------------------------------------------------------------- */
 
     /// Searches for `file` inside a _user-specific_ XDG app subdirectory.
     ///
@@ -947,6 +1001,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
     /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_app_cache_file("file")? {
+    ///     Some(app_cache_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_app_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -971,6 +1039,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
     /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_app_config_file("file")? {
+    ///     Some(app_config_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_app_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -995,6 +1077,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
     /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_app_data_file("file")? {
+    ///     Some(app_data_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_app_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -1019,6 +1115,20 @@ impl XdgApp {
     /// This method returns an error in the following cases:
     /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
     /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{XdgApp, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = XdgApp::new("app_name")?;
+    /// match xdg.search_app_state_file("file")? {
+    ///     Some(app_state_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_app_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,

@@ -1,6 +1,14 @@
 [package]
 name = "microxdg"
+description = "An XDG Base Directory Specification library."
+authors = ["Marco Radocchia <marco.radocchia@outlook.com"]
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.70.0"
+categories = ["config", "filesystem"]
+keywords = ["xdg", "directory", "basedir", "appdir", "path"]
+repository = "https://github.com/marcoradocchia/microxdg"
+readme = "README.md"
+license = "GPL-3.0-only"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -1,5 +1,5 @@
-//! A minimal [_XDG Base Directory Specification_](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)
-//! library for the Rust programming language.
+//! An [**XDG Base Directory Specification**](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>) Rust library that aims to be
+//! conservative on memory allocation and overall memory footprint.
 //! ```rust
 //! use microxdg::{Xdg, XdgError};
 //!
@@ -801,6 +801,20 @@ impl Xdg {
     /// This method returns an error in the following cases:
     /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
     /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// match xdg.search_cache_file("file")? {
+    ///     Some(cache_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -830,6 +844,20 @@ impl Xdg {
     /// This method returns an error in the following cases:
     /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
     /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// match xdg.search_config_file("file")? {
+    ///     Some(config_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -859,6 +887,20 @@ impl Xdg {
     /// This method returns an error in the following cases:
     /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
     /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// match xdg.search_data_file("file")? {
+    ///     Some(data_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -882,6 +924,20 @@ impl Xdg {
     /// This method returns an error in the following cases:
     /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
     /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use microxdg::{Xdg, XdgError};
+    /// # fn main() -> Result<(), XdgError> {
+    /// let xdg = Xdg::new()?;
+    /// match xdg.search_state_file("file")? {
+    ///     Some(state_file) => { /* ... */ }
+    ///     None => { /* ... */ }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn search_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,

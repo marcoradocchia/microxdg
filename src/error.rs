@@ -1,6 +1,7 @@
 use std::{error, ffi::OsString, fmt, path::PathBuf};
 
-/// XDG Base Directory specification errors.
+/// [_XDG Base Directory Specification_](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)
+/// errors.
 #[derive(Debug, PartialEq, Eq)]
 pub enum XdgError {
     /// Unable to retrieve user's home directory.
