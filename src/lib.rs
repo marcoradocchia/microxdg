@@ -1,18 +1,45 @@
-//! An [**XDG Base Directory Specification**](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>) Rust library that aims to be
-//! conservative on memory allocation and overall memory footprint.
+//! An [**XDG Base Directory Specification**](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)
+//! Rust library that aims to be conservative on memory allocation and overall
+//! memory footprint.
+//!
+//! # Examples
+//!
+//! The following example illustrates how to retrieve the _user-specific_ XDG **configuration**
+//! base directory:
 //! ```rust
+//! # use std::{env, path::Path};
 //! use microxdg::{Xdg, XdgError};
 //!
 //! fn main() -> Result<(), XdgError> {
-//!     let xdg = Xdg::new()?;
+//!     # env::set_var("XDG_CONFIG_HOME", "/home/user/.config");
 //!
-//!     let cache_dir = xdg.cache()?;
+//!     let xdg = Xdg::new()?;
 //!     let config_dir = xdg.config()?;
-//!     let data_dir = xdg.data()?;
+//!     debug_assert_eq!(Path::new("/home/user/.config"), &config_dir);
+//!
+//!     /* Do something with `config_dir`... */
 //!
 //!     Ok(())
 //! }
 //! ```
+//!
+//! One may also want to retrieve the _user-specific_ XDG **state** subdirectories relative to a
+//! certain application:
+//! ```rust
+//! # use std::{env, path::Path};
+//! use microxdg::{XdgApp, XdgError};
+//!
+//! fn main() -> Result<(), XdgError> {
+//!     # env::set_var("XDG_STATE_HOME", "/home/user/.local/state");
+//!
+//!     let xdg = XdgApp::new("app_name")?;
+//!     let app_state_dir = xdg.app_state()?;
+//!     debug_assert_eq!(Path::new("/home/user/.local/state/app_name"), &app_state_dir);
+//!
+//!     /* Do something with `app_state_dir`... */
+//!
+//!     Ok(())
+//! }
 
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
@@ -92,19 +119,16 @@ impl XdgSysDirs {
         }
     }
 
-    /// Returns an owned vector of paths from a slice of string literals.
-    #[inline]
-    fn from_paths(paths: &[&str]) -> Vec<PathBuf> {
-        paths.iter().map(PathBuf::from).collect()
-    }
-
     /// Returns the fallback directories in the case the XDG environment
     /// variable is not set.
-    fn fallback(self) -> Vec<PathBuf> {
+    #[inline]
+    fn fallback(self) -> impl Iterator<Item = PathBuf> {
         match self {
-            XdgSysDirs::Config => XdgSysDirs::from_paths(&["/etc/xdg"]),
-            XdgSysDirs::Data => XdgSysDirs::from_paths(&["/usr/local/share", "/usr/share"]),
+            XdgSysDirs::Config => ["/etc/xdg"].as_slice(),
+            XdgSysDirs::Data => ["/usr/local/share", "/usr/share"].as_slice(),
         }
+        .iter()
+        .map(PathBuf::from)
     }
 }
 
@@ -185,7 +209,6 @@ pub struct Xdg {
 impl Xdg {
     /// Constructs a new [`Xdg`] instance from a string representation of the
     /// `HOME` path.
-    #[inline]
     #[must_use]
     fn new_from_string(home: String) -> Xdg {
         Xdg {
@@ -222,7 +245,6 @@ impl Xdg {
     }
 
     /// Returns the **home** directory of the user owning the process.
-    #[inline]
     #[must_use]
     pub fn home(&self) -> &Path {
         &self.home
@@ -235,18 +257,45 @@ impl Xdg {
     /// This function returns an error if the value represents a relative path:
     /// XDG environment variables must be set to absolute paths.
     #[inline]
-    fn validate_path<S>(env_var_key: &'static str, env_var_val: S) -> Result<PathBuf, XdgError>
+    fn validate_path<P>(env_var_key: &'static str, env_var_val: P) -> Result<PathBuf, XdgError>
     where
-        S: Into<String>,
+        P: Into<PathBuf>,
     {
-        let path = PathBuf::from(env_var_val.into());
-
+        let path: PathBuf = env_var_val.into();
         if path.is_relative() {
-            // XDG environment contains a relative path.
-            return Err(XdgError::EnvVarRelativePath { env_var_key, path });
+            // XDG environment variable contains a relative path (only absolute paths allowed).
+            return Err(XdgError::RelativePath { env_var_key, path });
         }
 
         Ok(path)
+    }
+
+    /// Returns the value of an XDG environment variable.
+    ///
+    /// # Note
+    ///
+    /// This method returns:
+    /// - `Some` if the XDG environment variable is set;
+    /// - `None` if the XDG environment variable is missing or set to an empty value.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error in the following cases:
+    /// - the XDG environment variable is set to a relative path;
+    /// - the XDG environment variable is set to invalid unicode.
+    #[inline]
+    fn get_env_var(env_var_key: &'static str) -> Result<Option<String>, XdgError> {
+        match env::var(env_var_key) {
+            // XDG environment variable is set and non-empty.
+            Ok(env_var_val) if !env_var_val.is_empty() => Ok(Some(env_var_val)),
+            // XDG environment variable is set but contains invalid unicode.
+            Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
+                env_var_key,
+                env_var_val,
+            }),
+            // XDG environment variable is not set or set but empty.
+            _ => Ok(None),
+        }
     }
 
     /// Returns the path set to an XDG environment variable or a fallback
@@ -261,18 +310,9 @@ impl Xdg {
     #[inline]
     fn get_dir_path(&self, dir: XdgDir) -> Result<PathBuf, XdgError> {
         let env_var_key = dir.env_var();
-        match env::var(env_var_key) {
-            // XDG environment variable is set and non-empty.
-            Ok(env_var_val) if !env_var_val.is_empty() => {
-                Xdg::validate_path(env_var_key, env_var_val)
-            }
-            // XDG environment variable is set but contains invalid unicode.
-            Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
-                env_var_key,
-                env_var_val,
-            }),
-            // XDG environment variable is not set or set but empty.
-            _ => Ok(self.home.join(dir.fallback())),
+        match Xdg::get_env_var(env_var_key)? {
+            Some(env_var_val) => Xdg::validate_path(env_var_key, env_var_val),
+            None => Ok(self.home.join(dir.fallback())),
         }
     }
 
@@ -297,7 +337,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn cache(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::Cache)
     }
@@ -323,7 +362,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn config(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::Config)
     }
@@ -349,7 +387,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn data(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::Data)
     }
@@ -375,7 +412,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn state(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::State)
     }
@@ -409,22 +445,11 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn runtime(&self) -> Result<Option<PathBuf>, XdgError> {
         const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";
-
-        match env::var(XDG_RUNTIME_DIR) {
-            // The runtime environment variable is set.
-            Ok(env_var_val) if !env_var_val.is_empty() => {
-                Ok(Some(Xdg::validate_path(XDG_RUNTIME_DIR, env_var_val)?))
-            }
-            // The runtime environment variable is set but contains invalid unicode.
-            Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
-                env_var_key: XDG_RUNTIME_DIR,
-                env_var_val,
-            }),
-            _ => Ok(None),
-        }
+        Xdg::get_env_var(XDG_RUNTIME_DIR)?
+            .map(|env_var_val| Xdg::validate_path(XDG_RUNTIME_DIR, env_var_val))
+            .transpose()
     }
 
     /// Returns the _user-specific_ XDG **executable** directory specified by
@@ -440,7 +465,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     #[must_use]
     pub fn exec(&self) -> PathBuf {
         self.home.join(".local/bin")
@@ -458,19 +482,12 @@ impl Xdg {
     #[inline]
     fn get_sys_dir_paths(dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
         let env_var_key = dirs.env_var();
-        match env::var(env_var_key) {
-            // XDG environment variable is set and non-empty.
-            Ok(env_var_val) if !env_var_val.is_empty() => env_var_val
+        match Xdg::get_env_var(env_var_key)? {
+            Some(env_var_val) => env_var_val
                 .split(':')
-                .map(|path_str| Xdg::validate_path(env_var_key, path_str))
+                .map(|path| Xdg::validate_path(env_var_key, path))
                 .collect(),
-            // XDG environment variable is set but contains invalid unicode.
-            Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
-                env_var_key,
-                env_var_val,
-            }),
-            // XDG environment variable is not set or set but empty.
-            _ => Ok(dirs.fallback()),
+            None => Ok(dirs.fallback().collect()),
         }
     }
 
@@ -502,7 +519,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ````
-    #[inline]
     pub fn sys_config() -> Result<Vec<PathBuf>, XdgError> {
         Xdg::get_sys_dir_paths(XdgSysDirs::Config)
     }
@@ -535,7 +551,6 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ````
-    #[inline]
     pub fn sys_data() -> Result<Vec<PathBuf>, XdgError> {
         Xdg::get_sys_dir_paths(XdgSysDirs::Data)
     }
@@ -552,10 +567,10 @@ impl Xdg {
     where
         P: AsRef<Path>,
     {
-        let mut path = self.get_dir_path(dir)?;
-        path.push(file);
-
-        Ok(path)
+        self.get_dir_path(dir).map(|mut path| {
+            path.push(file);
+            path
+        })
     }
 
     /// Returns the _user-specific_ XDG **cache** file as
@@ -708,14 +723,10 @@ impl Xdg {
     where
         P: AsRef<Path>,
     {
-        let mut usr_path = self.get_dir_path(dir)?;
-        usr_path.push(file);
-
-        if usr_path.is_file() {
-            return Ok(Some(usr_path));
-        }
-
-        Ok(None)
+        self.get_dir_path(dir).map(|mut path| {
+            path.push(file);
+            path.is_file().then_some(path)
+        })
     }
 
     /// Searches for `file` inside a _system-wide_, preference-ordered, set of
@@ -739,11 +750,11 @@ impl Xdg {
     where
         P: AsRef<Path>,
     {
-        for mut sys_path in Xdg::get_sys_dir_paths(dirs)? {
-            sys_path.push(&file);
+        for mut path in Xdg::get_sys_dir_paths(dirs)? {
+            path.push(&file);
 
-            if sys_path.is_file() {
-                return Ok(Some(sys_path));
+            if path.is_file() {
+                return Ok(Some(path));
             }
         }
 
@@ -772,13 +783,13 @@ impl Xdg {
     where
         P: AsRef<Path>,
     {
-        if let Some(file_path) = self.search_usr_file(dir, &file)? {
-            return Ok(Some(file_path));
+        if let Some(path) = self.search_usr_file(dir, &file)? {
+            return Ok(Some(path));
         }
 
         if let Some(sys_dirs) = dir.to_sys() {
-            if let Some(file_path) = Xdg::search_sys_file(sys_dirs, &file)? {
-                return Ok(Some(file_path));
+            if let Some(path) = Xdg::search_sys_file(sys_dirs, &file)? {
+                return Ok(Some(path));
             }
         }
 
@@ -1028,35 +1039,35 @@ mod test {
         env::set_var("XDG_STATE_HOME", "./state");
         env::set_var("XDG_RUNTIME_DIR", "./runtime");
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_CACHE_HOME",
                 path: PathBuf::from("./cache")
             },
             xdg.cache().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_CONFIG_HOME",
                 path: PathBuf::from("./config")
             },
             xdg.config().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_DATA_HOME",
                 path: PathBuf::from("./data")
             },
             xdg.data().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_STATE_HOME",
                 path: PathBuf::from("./state")
             },
             xdg.state().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_RUNTIME_DIR",
                 path: PathBuf::from("./runtime")
             },

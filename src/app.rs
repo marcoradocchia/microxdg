@@ -113,7 +113,6 @@ impl XdgApp {
     }
 
     /// Returns the **home** directory of the user owning the process.
-    #[inline]
     #[must_use]
     pub fn home(&self) -> &Path {
         self.xdg.home()
@@ -140,7 +139,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn cache(&self) -> Result<PathBuf, XdgError> {
         self.xdg.cache()
     }
@@ -166,7 +164,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn config(&self) -> Result<PathBuf, XdgError> {
         self.xdg.config()
     }
@@ -192,7 +189,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn data(&self) -> Result<PathBuf, XdgError> {
         self.xdg.data()
     }
@@ -218,7 +214,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn state(&self) -> Result<PathBuf, XdgError> {
         self.xdg.state()
     }
@@ -269,7 +264,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     #[must_use]
     pub fn exec(&self) -> PathBuf {
         self.xdg.exec()
@@ -303,7 +297,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ````
-    #[inline]
     pub fn sys_config() -> Result<Vec<PathBuf>, XdgError> {
         Xdg::sys_config()
     }
@@ -333,7 +326,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ````
-    #[inline]
     pub fn sys_data() -> Result<Vec<PathBuf>, XdgError> {
         Xdg::sys_data()
     }
@@ -384,7 +376,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn app_cache(&self) -> Result<PathBuf, XdgError> {
         self.get_app_dir_path(XdgDir::Cache)
     }
@@ -417,7 +408,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn app_config(&self) -> Result<PathBuf, XdgError> {
         self.get_app_dir_path(XdgDir::Config)
     }
@@ -450,7 +440,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn app_data(&self) -> Result<PathBuf, XdgError> {
         self.get_app_dir_path(XdgDir::Data)
     }
@@ -483,7 +472,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ```
-    #[inline]
     pub fn app_state(&self) -> Result<PathBuf, XdgError> {
         self.get_app_dir_path(XdgDir::State)
     }
@@ -499,14 +487,25 @@ impl XdgApp {
     /// - the XDG environment variable is set to invalid unicode.
     #[inline]
     fn get_app_sys_dir_paths(&self, dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
-        // TODO: may be improved appending `self.name` to each path while
-        // collecting the vector in `Xdg::get_sys_dir_paths`.
-        let mut sys_dir_paths = Xdg::get_sys_dir_paths(dirs)?;
-        for path in &mut sys_dir_paths {
-            path.push(self.name);
-        }
+        let env_var_key = dirs.env_var();
+        match Xdg::get_env_var(env_var_key)? {
+            Some(env_var_val) => env_var_val
+                .split(':')
+                .map(|path| -> Result<PathBuf, XdgError> {
+                    let mut path = Xdg::validate_path(env_var_key, path)?;
+                    path.push(self.name);
 
-        Ok(sys_dir_paths)
+                    Ok(path)
+                })
+                .collect(),
+            None => Ok(dirs
+                .fallback()
+                .map(|mut path| {
+                    path.push(self.name);
+                    path
+                })
+                .collect()),
+        }
     }
 
     /// Returns the _system-wide_, preference-ordered, XDG **configuration**
@@ -537,7 +536,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ````
-    #[inline]
     pub fn app_sys_config(&self) -> Result<Vec<PathBuf>, XdgError> {
         self.get_app_sys_dir_paths(XdgSysDirs::Config)
     }
@@ -570,7 +568,6 @@ impl XdgApp {
     /// # Ok(())
     /// # }
     /// ````
-    #[inline]
     pub fn app_sys_data(&self) -> Result<Vec<PathBuf>, XdgError> {
         self.get_app_sys_dir_paths(XdgSysDirs::Data)
     }
@@ -1229,28 +1226,28 @@ mod test {
         env::set_var("XDG_DATA_HOME", "./app_name/data");
         env::set_var("XDG_STATE_HOME", "./app_name/state");
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_CACHE_HOME",
                 path: PathBuf::from("./app_name/cache")
             },
             xdg.app_cache().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_CONFIG_HOME",
                 path: PathBuf::from("./app_name/config")
             },
             xdg.app_config().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_DATA_HOME",
                 path: PathBuf::from("./app_name/data")
             },
             xdg.app_data().unwrap_err()
         );
         assert_eq!(
-            XdgError::EnvVarRelativePath {
+            XdgError::RelativePath {
                 env_var_key: "XDG_STATE_HOME",
                 path: PathBuf::from("./app_name/state")
             },

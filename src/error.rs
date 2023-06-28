@@ -6,8 +6,8 @@ use std::{error, ffi::OsString, fmt, path::PathBuf};
 pub enum XdgError {
     /// Unable to retrieve user's home directory.
     HomeNotFound,
-    /// XDG environment variable contains a relative path.
-    EnvVarRelativePath {
+    /// XDG environment variable contains a relative path (only absolute paths allowed).
+    RelativePath {
         /// XDG environment variable key (variable name).
         env_var_key: &'static str,
         /// XDG environment variable's relative path.
@@ -30,7 +30,7 @@ impl fmt::Display for XdgError {
                 "unable to locate user's home directory, \
                     neither HOME or USER environment variables set"
             ),
-            XdgError::EnvVarRelativePath { env_var_key, path } => write!(
+            XdgError::RelativePath { env_var_key, path } => write!(
                 f,
                 "environment variable '{env_var_key}' contains a relative \
                     path '{path}' (paths in XDG environment variables must \
