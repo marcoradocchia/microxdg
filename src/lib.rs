@@ -839,7 +839,7 @@ impl Xdg {
     }
 
     /// Searches for `file` inside the _user-specific_ XDG **cache** directory
-    /// specified by the`XDG_CACHE_HOME` environment variable.
+    /// specified by the `XDG_CACHE_HOME` environment variable.
     /// The search falls back to `$HOME/.cache` if `XDG_CACHE_HOME` is not set
     /// or is set to an empty value.
     ///
@@ -877,7 +877,7 @@ impl Xdg {
     }
 
     /// Searches for `file` inside the _user-specific_ XDG **configuration**
-    /// directory specified by the`XDG_CONFIG_HOME` environment variable.
+    /// directory specified by the `XDG_CONFIG_HOME` environment variable.
     /// If `XDG_CONFIG_HOME` is not set or is set to an empty value, the
     /// search falls back to `$HOME/.config`.
     ///
@@ -921,7 +921,7 @@ impl Xdg {
     }
 
     /// Searches for `file` inside the _user-specific_ XDG **data**
-    /// directory specified by the`XDG_DATA_HOME` environment variable.
+    /// directory specified by the `XDG_DATA_HOME` environment variable.
     /// If `XDG_DATA_HOME` is not set or is set to an empty value, the
     /// search falls back to `$HOME/.local/share`.
     ///
@@ -965,7 +965,7 @@ impl Xdg {
     }
 
     /// Searches for `file` inside the _user-specific_ XDG **state** directory
-    /// specified by the`XDG_STATE_HOME` environment variable.
+    /// specified by the `XDG_STATE_HOME` environment variable.
     /// The search falls back to `$HOME/.local/state` if `XDG_STATE_HOME` is
     /// not set or is set to an empty value.
     ///
@@ -1006,7 +1006,7 @@ impl Xdg {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{env, ffi::OsStr, os::unix::prelude::OsStrExt, path::Path};
+    use std::{env, error::Error, ffi::OsStr, os::unix::prelude::OsStrExt, path::Path};
 
     const INVALID_UNICODE_BYTES: [u8; 4] = [0xF0, 0x90, 0x80, 0x67];
 
@@ -1207,6 +1207,128 @@ mod test {
                 PathBuf::from("/data/dir4"),
             ],
             Xdg::sys_data()?,
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn usr_file() -> Result<(), XdgError> {
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let xdg = Xdg::new()?;
+        assert_eq!(Path::new("/home/user/.cache/file"), xdg.cache_file("file")?);
+        assert_eq!(
+            Path::new("/home/user/.config/file"),
+            xdg.config_file("file")?
+        );
+        assert_eq!(
+            Path::new("/home/user/.local/share/file"),
+            xdg.data_file("file")?
+        );
+        assert_eq!(
+            Path::new("/home/user/.local/state/file"),
+            xdg.state_file("file")?
+        );
+
+        env::set_var("XDG_CACHE_HOME", "/home/user1/.cache");
+        env::set_var("XDG_CONFIG_HOME", "/home/user1/.config");
+        env::set_var("XDG_DATA_HOME", "/home/user1/.local/share");
+        env::set_var("XDG_STATE_HOME", "/home/user1/.local/state");
+
+        assert_eq!(
+            Path::new("/home/user1/.cache/file"),
+            xdg.cache_file("file")?
+        );
+        assert_eq!(
+            Path::new("/home/user1/.config/file"),
+            xdg.config_file("file")?
+        );
+        assert_eq!(
+            Path::new("/home/user1/.local/share/file"),
+            xdg.data_file("file")?
+        );
+        assert_eq!(
+            Path::new("/home/user1/.local/state/file"),
+            xdg.state_file("file")?
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn search_file() -> Result<(), Box<dyn Error>> {
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let mut tmp_dir_builder = tempfile::Builder::new();
+        tmp_dir_builder.prefix("microxdg");
+        tmp_dir_builder.rand_bytes(4);
+
+        let cache_home = tmp_dir_builder.tempdir()?;
+        let config_home = tmp_dir_builder.tempdir()?;
+        let data_home = tmp_dir_builder.tempdir()?;
+        let state_home = tmp_dir_builder.tempdir()?;
+
+        env::set_var("XDG_CACHE_HOME", cache_home.path());
+        env::set_var("XDG_CONFIG_HOME", config_home.path());
+        env::set_var("XDG_DATA_HOME", data_home.path());
+        env::set_var("XDG_STATE_HOME", state_home.path());
+
+        let mut tmp_file_builder = tempfile::Builder::new();
+        tmp_file_builder.prefix("microxdg");
+        tmp_file_builder.rand_bytes(0);
+
+        let cache_file = tmp_file_builder.tempfile_in(cache_home.path())?;
+        let config_file = tmp_file_builder.tempfile_in(config_home.path())?;
+        let data_file = tmp_file_builder.tempfile_in(data_home.path())?;
+        let state_file = tmp_file_builder.tempfile_in(state_home.path())?;
+
+        let xdg = Xdg::new()?;
+        assert_eq!(
+            Some(cache_file.path().into()),
+            xdg.search_cache_file("microxdg")?
+        );
+        assert_eq!(
+            Some(config_file.path().into()),
+            xdg.search_config_file("microxdg")?
+        );
+        assert_eq!(
+            Some(data_file.path().into()),
+            xdg.search_data_file("microxdg")?
+        );
+        assert_eq!(
+            Some(state_file.path().into()),
+            xdg.search_state_file("microxdg")?
+        );
+
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        let data_dirs = tmp_dir_builder.tempdir()?;
+        let config_dirs = tmp_dir_builder.tempdir()?;
+
+        env::set_var("XDG_DATA_DIRS", data_dirs.path());
+        env::set_var("XDG_CONFIG_DIRS", config_dirs.path());
+
+        let data_file = tmp_file_builder.tempfile_in(data_dirs.path())?;
+        let config_file = tmp_file_builder.tempfile_in(config_dirs.path())?;
+
+        assert_eq!(
+            Some(data_file.path().into()),
+            xdg.search_data_file("microxdg")?
+        );
+        assert_eq!(
+            Some(config_file.path().into()),
+            xdg.search_config_file("microxdg")?
         );
 
         Ok(())
