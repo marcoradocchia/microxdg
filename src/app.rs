@@ -1,41 +1,52 @@
-use super::{Xdg, XdgDir, XdgError, XdgSysDirs};
+use crate::{Append, Xdg, XdgDir, XdgError, XdgSysDirs};
 use std::path::{Path, PathBuf};
 
 /// _An implementation of the [XDG Base Directory Specification](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)_
 /// with extent to application specific subdirectories.
 ///
-/// Allows to retrieve:
-/// - _user-specific_ XDG Base Directories :
-///     - [_cache_](method@XdgApp::cache);
-///     - [_configuration_](method@XdgApp::config);
-///     - [_data_](method@XdgApp::data);
-///     - [_state_](method@XdgApp::state);
-///     - [_executable_](method@XdgApp::exec);
-///     - [_runtime_](method@XdgApp::runtime);
-/// - _user-specific_ **application subdirectories**:
-///     - [_app cache_](method@XdgApp::app_cache);
-///     - [_app configuration_](method@XdgApp::app_config);
-///     - [_app data_](method@XdgApp::app_data);
-///     - [_app state_](method@XdgApp::app_state);
-/// - _system-wide_, preference ordered (order denotes importance):
-///     - [_configuration_](method@XdgApp::sys_config);
-///     - [_data_](method@XdgApp::sys_data);
-/// - _system-wide_, preference ordered (order denotes importance),
-///   **application subdirectories**:
-///     - [_app configuration_](method@XdgApp::app_sys_config);
-///     - [_app data_](method@XdgApp::app_sys_data).
-///
-/// TODO: add table
-///
 /// Each of the base directories methods privileges the relative environment
 /// variable's value and falls back to the corresponding default whenever the
 /// environment variable is not set or set to an empty value.
+///
+/// User-specific Base Directories:
+///
+/// | XDG Base Directory                       | Environment variable | Fallback - `$HOME` set | Fallback - `$HOME` not set |
+/// | ---------------------------------------- | -------------------- | ---------------------- | -------------------------- |
+/// | [_Cache_](method@XdgApp::cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache`         | `/home/$USER/.cache`       |
+/// | [_Configuration_](method@XdgApp::config) | `$XDG_CONFIG_HOME`   | `$HOME/.config`        | `/home/$USER/.config`      |
+/// | [_Data_](method@XdgApp::data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share`   | `/home/$USER/.local/share` |
+/// | [_State_](method@XdgApp::state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state`   | `/home/$USER/.local/state` |
+/// | [_Runtime_](method@XdgApp::runtime)      | `$XDG_RUNTIME_DIR`   | -                      | -                          |
+/// | [_Executable_](method@XdgApp::exec)      | -                    | `$HOME/.local/bin`     | `/home/$USER/.local/bin`   |
+///
+/// User-specific XDG Application Subdirectories:
+///
+/// | XDG Application Subdirectory                     | Environment variable | Fallback - `$HOME` set            | Fallback - `$HOME` not set            |
+/// | ------------------------------------------------ | -------------------- | --------------------------------- | ------------------------------------- |
+/// | [_App Cache_](method@XdgApp::app_cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache/<app_name>`         | `/home/$USER/.cache/<app_name>`       |
+/// | [_App Configuration_](method@XdgApp::app_config) | `$XDG_CONFIG_HOME`   | `$HOME/.config/<app_name>`        | `/home/$USER/.config/<app_name>`      |
+/// | [_App Data_](method@XdgApp::app_data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share/<app_name>`   | `/home/$USER/.local/share/<app_name>` |
+/// | [_App State_](method@XdgApp::app_state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state/<app_name>`   | `/home/$USER/.local/state/<app_name>` |
+///
+/// System-wide, preference-ordered, XDG Base Directories:
+///
+/// | XDG Base Directory                           | Environment variable | Fallback                      |
+/// | -------------------------------------------- | -------------------- | ----------------------------- |
+/// | [_Configuration_](method@XdgApp::sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg`                    |
+/// | [_Data_](method@XdgApp::sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share:/usr/share` |
+///
+/// System-wide, preference-ordered, XDG Application Subdirectories:
+///
+/// | XDG Base Directory                               | Environment variable | Fallback                                            |
+/// | ------------------------------------------------ | -------------------- | --------------------------------------------------- |
+/// | [_Configuration_](method@XdgApp::app_sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg/<app_name>`                               |
+/// | [_Data_](method@XdgApp::app_sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share/<app_name>:/usr/share/<app_name>` |
 ///
 /// # Examples
 ///
 /// The example below retrieves the _user-specific XDG app configuration
 /// subdirectory_ by reading the value of the `XDG_CONFIG_HOME` environment
-/// variable as `$XDG_CONFIG_HOME/app_name` (similarly the other XDG
+/// variable as `$XDG_CONFIG_HOME/<app_name>` (similarly the other XDG
 /// application subdirectories):
 /// ```rust
 /// # use std::{error::Error, path::PathBuf};
@@ -50,7 +61,7 @@ use std::path::{Path, PathBuf};
 /// ```
 ///
 /// In the case the `XDG_CONFIG_DIR` environment variable is not set,
-/// `$HOME/.config/app_name` is used as a fallback (similarly the other XDG
+/// `$HOME/.config/<app_name>` is used as a fallback (similarly the other XDG
 /// application subdirectories):
 /// ```rust
 /// # use std::{error::Error, path::PathBuf};
@@ -342,10 +353,9 @@ impl XdgApp {
     /// - the XDG environment variable is set to invalid unicode.
     #[inline]
     fn get_app_dir_path(&self, dir: XdgDir) -> Result<PathBuf, XdgError> {
-        let mut path = self.xdg.get_dir_path(dir)?;
-        path.push(self.name);
-
-        Ok(path)
+        self.xdg
+            .get_dir_path(dir)
+            .map(|path| path.append(self.name))
     }
 
     /// Returns the _user-specific_ XDG **cache** directory for the current
@@ -489,22 +499,10 @@ impl XdgApp {
     fn get_app_sys_dir_paths(&self, dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
         let env_var_key = dirs.env_var();
         match Xdg::get_env_var(env_var_key)? {
-            Some(env_var_val) => env_var_val
-                .split(':')
-                .map(|path| -> Result<PathBuf, XdgError> {
-                    let mut path = Xdg::validate_path(env_var_key, path)?;
-                    path.push(self.name);
-
-                    Ok(path)
-                })
+            Some(env_var_val) => Xdg::iter_sys_dir_paths(env_var_key, &env_var_val)
+                .map(|result| result.map(|path| path.append(self.name)))
                 .collect(),
-            None => Ok(dirs
-                .fallback()
-                .map(|mut path| {
-                    path.push(self.name);
-                    path
-                })
-                .collect()),
+            None => Ok(dirs.fallback().map(|path| path.append(self.name)).collect()),
         }
     }
 
@@ -547,8 +545,8 @@ impl XdgApp {
     ///
     /// This method uses the preference-ordered data directories specified by
     /// the `XDG_DATA_DIRS` environment variable.
-    /// Falls back to `/usr/local/share:/usr/share` if `XDG_DATA_DIRS` is not
-    /// set or is set to an empty value.
+    /// Falls back to `/usr/local/share/<app_name>:/usr/share/<app_name>` if
+    /// `XDG_DATA_DIRS` is not set or is set to an empty value.
     ///
     /// See [`XdgApp::sys_data`] for further details.
     ///
@@ -584,11 +582,9 @@ impl XdgApp {
     where
         P: AsRef<Path>,
     {
-        let mut path = self.xdg.get_dir_path(dir)?;
-        path.push(self.name);
-        path.push(file);
-
-        Ok(path)
+        self.xdg
+            .get_dir_path(dir)
+            .map(|path| path.append(self.name).append(file))
     }
 
     /// Returns the _user-specific_ XDG **cache** application file as
@@ -902,15 +898,11 @@ impl XdgApp {
     where
         P: AsRef<Path>,
     {
-        let mut usr_path = self.xdg.get_dir_path(dir)?;
-        usr_path.push(self.name);
-        usr_path.push(file);
-
-        if usr_path.is_file() {
-            return Ok(Some(usr_path));
-        }
-
-        Ok(None)
+        self.xdg.get_dir_path(dir).map(|mut path| {
+            path.push(self.name);
+            path.push(file);
+            path.is_file().then_some(path)
+        })
     }
 
     /// Searches for `file` inside a _system-wide_, preference-ordered, set of
@@ -934,16 +926,18 @@ impl XdgApp {
     where
         P: AsRef<Path>,
     {
-        for mut sys_path in Xdg::get_sys_dir_paths(dirs)? {
-            sys_path.push(self.name);
-            sys_path.push(&file);
-
-            if sys_path.is_file() {
-                return Ok(Some(sys_path));
-            }
+        // TODO: check
+        let env_var_key = dirs.env_var();
+        match Xdg::get_env_var(env_var_key)? {
+            Some(env_var_val) => Xdg::iter_sys_dir_paths(env_var_key, &env_var_val)
+                .map(|result| result.map(|path| path.append(self.name).append(&file)))
+                .find(|path| path.as_ref().is_ok_and(|path| path.is_file()))
+                .transpose(),
+            None => Ok(dirs
+                .fallback()
+                .map(|path| path.append(self.name).append(&file))
+                .find(|path| path.is_file())),
         }
-
-        Ok(None)
     }
 
     /// Searches for `file` inside XDG app subdirectories in the following order:
@@ -968,13 +962,13 @@ impl XdgApp {
     where
         P: AsRef<Path>,
     {
-        if let Some(file_path) = self.search_app_usr_file(dir, &file)? {
-            return Ok(Some(file_path));
+        if let Some(path) = self.search_app_usr_file(dir, &file)? {
+            return Ok(Some(path));
         }
 
         if let Some(sys_dirs) = dir.to_sys() {
-            if let Some(file_path) = self.search_app_sys_file(sys_dirs, &file)? {
-                return Ok(Some(file_path));
+            if let Some(path) = self.search_app_sys_file(sys_dirs, &file)? {
+                return Ok(Some(path));
             }
         }
 

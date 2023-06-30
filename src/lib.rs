@@ -60,6 +60,23 @@ use std::{
 pub use app::XdgApp;
 pub use error::XdgError;
 
+trait Append {
+    fn append<P>(self, path: P) -> Self
+    where
+        P: AsRef<Path>;
+}
+
+impl Append for PathBuf {
+    #[inline]
+    fn append<P>(mut self, path: P) -> PathBuf
+    where
+        P: AsRef<Path>,
+    {
+        self.push(path);
+        self
+    }
+}
+
 /// XDG Base Directory Specification's directories.
 #[derive(Debug, Clone, Copy)]
 enum XdgDir {
@@ -134,23 +151,27 @@ impl XdgSysDirs {
 
 /// _An implementation of the [XDG Base Directory Specification](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)_.
 ///
-/// Allows to retrieve:
-/// - _user-specific_ XDG Base Directories:
-///     - [_cache_](method@Xdg::cache);
-///     - [_configuration_](method@Xdg::config);
-///     - [_data_](method@Xdg::data);
-///     - [_state_](method@Xdg::state);
-///     - [_executable_](method@Xdg::exec);
-///     - [_runtime_](method@Xdg::runtime);
-/// - _system-wide_, preference-ordered (order denotes importance):
-///     - [_configuration_](method@Xdg::sys_config);
-///     - [_data_](method@Xdg::sys_data).
-///
-/// Each of the base directories methods privileges the relative environment
+/// Each of the base directory methods privileges the relative environment
 /// variable's value and falls back to the corresponding default whenever the
 /// environment variable is not set or set to an empty value.
 ///
-/// TODO: add table
+/// User-specific Base Directories:
+///
+/// | XDG Base Directory                    | Environment variable | Fallback - `$HOME` set | Fallback - `$HOME` not set |
+/// | ------------------------------------- | -------------------- | ---------------------- | -------------------------- |
+/// | [_Cache_](method@Xdg::cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache`         | `/home/$USER/.cache`       |
+/// | [_Configuration_](method@Xdg::config) | `$XDG_CONFIG_HOME`   | `$HOME/.config`        | `/home/$USER/.config`      |
+/// | [_Data_](method@Xdg::data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share`   | `/home/$USER/.local/share` |
+/// | [_State_](method@Xdg::state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state`   | `/home/$USER/.local/state` |
+/// | [_Runtime_](method@Xdg::runtime)      | `$XDG_RUNTIME_DIR`   | -                      | -                          |
+/// | [_Executable_](method@Xdg::exec)      | -                    | `$HOME/.local/bin`     | `/home/$USER/.local/bin`   |
+///
+/// System-wide, preference-ordered, Base Directories:
+///
+/// | XDG Base Directory                        | Environment variable | Fallback                        |
+/// | ----------------------------------------- | -------------------- | ------------------------------- |
+/// | [_Configuration_](method@Xdg::sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg`                      |
+/// | [_Data_](method@Xdg::sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share:/usr/share` |
 ///
 /// # Examples
 ///
@@ -202,15 +223,16 @@ impl XdgSysDirs {
 /// ```
 #[derive(Debug, Clone)]
 pub struct Xdg {
-    /// User's home directory.
+    /// Home directory of the user owning the process.
     home: PathBuf,
 }
 
 impl Xdg {
     /// Constructs a new [`Xdg`] instance from a string representation of the
     /// `HOME` path.
+    #[inline]
     #[must_use]
-    fn new_from_string(home: String) -> Xdg {
+    fn from_string(home: String) -> Xdg {
         Xdg {
             home: PathBuf::from(home),
         }
@@ -224,11 +246,11 @@ impl Xdg {
     /// variable is set.
     pub fn new() -> Result<Xdg, XdgError> {
         if let Ok(home) = env::var("HOME") {
-            return Ok(Xdg::new_from_string(home));
+            return Ok(Xdg::from_string(home));
         }
 
         if let Ok(user) = env::var("USER") {
-            return Ok(Xdg::new_from_string(format!("/home/{user}")));
+            return Ok(Xdg::from_string(format!("/home/{user}")));
         }
 
         Err(XdgError::HomeNotFound)
@@ -337,6 +359,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn cache(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::Cache)
     }
@@ -362,6 +385,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn config(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::Config)
     }
@@ -387,6 +411,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn data(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::Data)
     }
@@ -412,6 +437,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn state(&self) -> Result<PathBuf, XdgError> {
         self.get_dir_path(XdgDir::State)
     }
@@ -445,6 +471,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn runtime(&self) -> Result<Option<PathBuf>, XdgError> {
         const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";
         Xdg::get_env_var(XDG_RUNTIME_DIR)?
@@ -465,9 +492,22 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     #[must_use]
     pub fn exec(&self) -> PathBuf {
         self.home.join(".local/bin")
+    }
+
+    /// Returns an iterator over the _sistem-wide_ directories set to a system
+    /// XDG environment variable.
+    #[inline]
+    fn iter_sys_dir_paths<'val>(
+        env_var_key: &'static str,
+        env_var_val: &'val str,
+    ) -> impl Iterator<Item = Result<PathBuf, XdgError>> + 'val {
+        env_var_val
+            .split(':')
+            .map(move |path| Xdg::validate_path(env_var_key, path))
     }
 
     /// Returns the preference-ordered _system-wide_ directories set to a system
@@ -483,10 +523,7 @@ impl Xdg {
     fn get_sys_dir_paths(dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
         let env_var_key = dirs.env_var();
         match Xdg::get_env_var(env_var_key)? {
-            Some(env_var_val) => env_var_val
-                .split(':')
-                .map(|path| Xdg::validate_path(env_var_key, path))
-                .collect(),
+            Some(env_var_val) => Xdg::iter_sys_dir_paths(env_var_key, &env_var_val).collect(),
             None => Ok(dirs.fallback().collect()),
         }
     }
@@ -518,7 +555,8 @@ impl Xdg {
     /// let sys_config_dirs = Xdg::sys_config()?;
     /// # Ok(())
     /// # }
-    /// ````
+    /// ```
+    #[inline]
     pub fn sys_config() -> Result<Vec<PathBuf>, XdgError> {
         Xdg::get_sys_dir_paths(XdgSysDirs::Config)
     }
@@ -550,7 +588,8 @@ impl Xdg {
     /// let sys_data_dirs = Xdg::sys_data()?;
     /// # Ok(())
     /// # }
-    /// ````
+    /// ```
+    #[inline]
     pub fn sys_data() -> Result<Vec<PathBuf>, XdgError> {
         Xdg::get_sys_dir_paths(XdgSysDirs::Data)
     }
@@ -567,10 +606,7 @@ impl Xdg {
     where
         P: AsRef<Path>,
     {
-        self.get_dir_path(dir).map(|mut path| {
-            path.push(file);
-            path
-        })
+        self.get_dir_path(dir).map(|path| path.append(file))
     }
 
     /// Returns the _user-specific_ XDG **cache** file as
@@ -599,6 +635,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn cache_file<P>(&self, file: P) -> Result<PathBuf, XdgError>
     where
         P: AsRef<Path>,
@@ -632,6 +669,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn config_file<P>(&self, file: P) -> Result<PathBuf, XdgError>
     where
         P: AsRef<Path>,
@@ -665,6 +703,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn data_file<P>(&self, file: P) -> Result<PathBuf, XdgError>
     where
         P: AsRef<Path>,
@@ -698,6 +737,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn state_file<P>(&self, file: P) -> Result<PathBuf, XdgError>
     where
         P: AsRef<Path>,
@@ -750,15 +790,17 @@ impl Xdg {
     where
         P: AsRef<Path>,
     {
-        for mut path in Xdg::get_sys_dir_paths(dirs)? {
-            path.push(&file);
-
-            if path.is_file() {
-                return Ok(Some(path));
-            }
+        let env_var_key = dirs.env_var();
+        match Xdg::get_env_var(env_var_key)? {
+            Some(env_var_val) => Xdg::iter_sys_dir_paths(env_var_key, &env_var_val)
+                .map(|result| result.map(|path| path.append(&file)))
+                .find(|path| path.as_ref().is_ok_and(|path| path.is_file()))
+                .transpose(),
+            None => Ok(dirs
+                .fallback()
+                .map(|path| path.append(&file))
+                .find(|path| path.is_file())),
         }
-
-        Ok(None)
     }
 
     /// Searches for `file` inside XDG directories in the following order:
@@ -826,6 +868,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn search_cache_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -869,6 +912,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn search_config_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -912,6 +956,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn search_data_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
@@ -949,6 +994,7 @@ impl Xdg {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn search_state_file<P>(&self, file: P) -> Result<Option<PathBuf>, XdgError>
     where
         P: AsRef<Path>,
