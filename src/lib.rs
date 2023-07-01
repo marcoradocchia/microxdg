@@ -1297,19 +1297,19 @@ mod test {
         let xdg = Xdg::new()?;
         assert_eq!(
             Some(cache_file.path().into()),
-            xdg.search_cache_file("microxdg")?
+            xdg.search_cache_file("microxdg")?,
         );
         assert_eq!(
             Some(config_file.path().into()),
-            xdg.search_config_file("microxdg")?
+            xdg.search_config_file("microxdg")?,
         );
         assert_eq!(
             Some(data_file.path().into()),
-            xdg.search_data_file("microxdg")?
+            xdg.search_data_file("microxdg")?,
         );
         assert_eq!(
             Some(state_file.path().into()),
-            xdg.search_state_file("microxdg")?
+            xdg.search_state_file("microxdg")?,
         );
 
         env::remove_var("XDG_CACHE_HOME");

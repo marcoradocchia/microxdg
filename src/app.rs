@@ -1263,7 +1263,7 @@ impl XdgApp {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{env, ffi::OsStr, os::unix::prelude::OsStrExt, path::Path};
+    use std::{env, error::Error, ffi::OsStr, fs, os::unix::prelude::OsStrExt, path::Path};
 
     const INVALID_UNICODE_BYTES: [u8; 4] = [0xF0, 0x90, 0x80, 0x67];
 
@@ -1525,7 +1525,79 @@ mod test {
     }
 
     #[test]
-    fn usr_app_dirs() -> Result<(), XdgError> {
+    fn search_file() -> Result<(), Box<dyn Error>> {
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let mut tmp_dir_builder = tempfile::Builder::new();
+        tmp_dir_builder.prefix("microxdg");
+        tmp_dir_builder.rand_bytes(4);
+
+        let cache_home = tmp_dir_builder.tempdir()?;
+        let config_home = tmp_dir_builder.tempdir()?;
+        let data_home = tmp_dir_builder.tempdir()?;
+        let state_home = tmp_dir_builder.tempdir()?;
+
+        env::set_var("XDG_CACHE_HOME", cache_home.path());
+        env::set_var("XDG_CONFIG_HOME", config_home.path());
+        env::set_var("XDG_DATA_HOME", data_home.path());
+        env::set_var("XDG_STATE_HOME", state_home.path());
+
+        let mut tmp_file_builder = tempfile::Builder::new();
+        tmp_file_builder.prefix("microxdg");
+        tmp_file_builder.rand_bytes(0);
+
+        let cache_file = tmp_file_builder.tempfile_in(cache_home.path())?;
+        let config_file = tmp_file_builder.tempfile_in(config_home.path())?;
+        let data_file = tmp_file_builder.tempfile_in(data_home.path())?;
+        let state_file = tmp_file_builder.tempfile_in(state_home.path())?;
+
+        let xdg = XdgApp::new("app_name")?;
+        assert_eq!(
+            Some(cache_file.path().into()),
+            xdg.search_cache_file("microxdg")?
+        );
+        assert_eq!(
+            Some(config_file.path().into()),
+            xdg.search_config_file("microxdg")?
+        );
+        assert_eq!(
+            Some(data_file.path().into()),
+            xdg.search_data_file("microxdg")?
+        );
+        assert_eq!(
+            Some(state_file.path().into()),
+            xdg.search_state_file("microxdg")?
+        );
+
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        let data_dirs = tmp_dir_builder.tempdir()?;
+        let config_dirs = tmp_dir_builder.tempdir()?;
+
+        env::set_var("XDG_DATA_DIRS", data_dirs.path());
+        env::set_var("XDG_CONFIG_DIRS", config_dirs.path());
+
+        let data_file = tmp_file_builder.tempfile_in(data_dirs.path())?;
+        let config_file = tmp_file_builder.tempfile_in(config_dirs.path())?;
+
+        assert_eq!(
+            Some(data_file.path().into()),
+            xdg.search_data_file("microxdg")?
+        );
+        assert_eq!(
+            Some(config_file.path().into()),
+            xdg.search_config_file("microxdg")?
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn app_usr_dirs() -> Result<(), XdgError> {
         env::remove_var("XDG_CACHE_HOME");
         env::remove_var("XDG_CONFIG_HOME");
         env::remove_var("XDG_DATA_HOME");
@@ -1647,12 +1719,9 @@ mod test {
     }
 
     #[test]
-    fn sys_app_dirs() -> Result<(), XdgError> {
+    fn app_sys_dirs() -> Result<(), XdgError> {
         env::remove_var("XDG_CONFIG_DIRS");
         env::remove_var("XDG_DATA_DIRS");
-
-        env::set_var("HOME", "/home/user");
-        env::set_var("USER", "user");
 
         let xdg = XdgApp::new("app_name")?;
 
@@ -1693,6 +1762,173 @@ mod test {
                 PathBuf::from("/data/dir4/app_name"),
             ],
             xdg.app_sys_data()?,
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn app_usr_file() -> Result<(), XdgError> {
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let xdg = XdgApp::new("app_name")?;
+        assert_eq!(
+            Path::new("/home/user/.cache/app_name/file"),
+            xdg.app_cache_file("file")?
+        );
+        assert_eq!(
+            Path::new("/home/user/.config/app_name/file"),
+            xdg.app_config_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user/.local/share/app_name/file"),
+            xdg.app_data_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user/.local/state/app_name/file"),
+            xdg.app_state_file("file")?,
+        );
+
+        env::set_var("XDG_CACHE_HOME", "/home/user1/.cache");
+        env::set_var("XDG_CONFIG_HOME", "/home/user1/.config");
+        env::set_var("XDG_DATA_HOME", "/home/user1/.local/share");
+        env::set_var("XDG_STATE_HOME", "/home/user1/.local/state");
+        assert_eq!(
+            Path::new("/home/user1/.cache/app_name/file"),
+            xdg.app_cache_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user1/.config/app_name/file"),
+            xdg.app_config_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user1/.local/share/app_name/file"),
+            xdg.app_data_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user1/.local/state/app_name/file"),
+            xdg.app_state_file("file")?,
+        );
+
+        env::remove_var("HOME");
+        env::set_var("USER", "user2");
+
+        env::set_var("XDG_CACHE_HOME", "");
+        env::set_var("XDG_CONFIG_HOME", "");
+        env::set_var("XDG_DATA_HOME", "");
+        env::set_var("XDG_STATE_HOME", "");
+
+        let xdg = XdgApp::new("app_name")?;
+        assert_eq!(
+            Path::new("/home/user2/.cache/app_name/file"),
+            xdg.app_cache_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user2/.config/app_name/file"),
+            xdg.app_config_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user2/.local/share/app_name/file"),
+            xdg.app_data_file("file")?,
+        );
+        assert_eq!(
+            Path::new("/home/user2/.local/state/app_name/file"),
+            xdg.app_state_file("file")?,
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn search_app_file() -> Result<(), Box<dyn Error>> {
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let mut tmp_dir_builder = tempfile::Builder::new();
+        tmp_dir_builder.prefix("microxdg");
+        tmp_dir_builder.rand_bytes(4);
+
+        let cache_home = tmp_dir_builder.tempdir()?;
+        let app_cache_dir = cache_home.path().join("app_name");
+        fs::create_dir(&app_cache_dir)?;
+        let config_home = tmp_dir_builder.tempdir()?;
+        let app_config_dir = config_home.path().join("app_name");
+        fs::create_dir(&app_config_dir)?;
+        let data_home = tmp_dir_builder.tempdir()?;
+        let app_data_dir = data_home.path().join("app_name");
+        fs::create_dir(&app_data_dir)?;
+        let state_home = tmp_dir_builder.tempdir()?;
+        let app_state_dir = state_home.path().join("app_name");
+        fs::create_dir(&app_state_dir)?;
+
+        env::set_var("XDG_CACHE_HOME", cache_home.path());
+        env::set_var("XDG_CONFIG_HOME", config_home.path());
+        env::set_var("XDG_DATA_HOME", data_home.path());
+        env::set_var("XDG_STATE_HOME", state_home.path());
+
+        let mut tmp_file_builder = tempfile::Builder::new();
+        tmp_file_builder.prefix("microxdg");
+        tmp_file_builder.rand_bytes(0);
+
+        let cache_file = tmp_file_builder.tempfile_in(app_cache_dir)?;
+        let config_file = tmp_file_builder.tempfile_in(app_config_dir)?;
+        let data_file = tmp_file_builder.tempfile_in(app_data_dir)?;
+        let state_file = tmp_file_builder.tempfile_in(app_state_dir)?;
+
+        let xdg = XdgApp::new("app_name")?;
+        assert_eq!(
+            Some(cache_file.path().into()),
+            xdg.search_app_cache_file("microxdg")?,
+        );
+        assert_eq!(
+            Some(config_file.path().into()),
+            xdg.search_app_config_file("microxdg")?,
+        );
+        assert_eq!(
+            Some(data_file.path().into()),
+            xdg.search_app_data_file("microxdg")?,
+        );
+        assert_eq!(
+            Some(state_file.path().into()),
+            xdg.search_app_state_file("microxdg")?,
+        );
+
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        let data_dirs = tmp_dir_builder.tempdir()?;
+        let app_data_dirs = data_dirs.path().join("app_name");
+        fs::create_dir(&app_data_dirs)?;
+        let config_dirs = tmp_dir_builder.tempdir()?;
+        let app_config_dirs = config_dirs.path().join("app_name");
+        fs::create_dir(&app_config_dirs)?;
+
+        env::set_var("XDG_DATA_DIRS", &app_data_dirs);
+        env::set_var("XDG_CONFIG_DIRS", &app_config_dirs);
+
+        let data_file = tmp_file_builder.tempfile_in(app_data_dirs)?;
+        let config_file = tmp_file_builder.tempfile_in(app_config_dirs)?;
+
+        assert_eq!(
+            Some(data_file.path().into()),
+            xdg.search_data_file("microxdg")?
+        );
+        assert_eq!(
+            Some(config_file.path().into()),
+            xdg.search_config_file("microxdg")?
         );
 
         Ok(())
