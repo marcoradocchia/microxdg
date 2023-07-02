@@ -50,3 +50,41 @@ impl fmt::Display for XdgError {
 }
 
 impl error::Error for XdgError {}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::{error::Error, ffi::OsStr, os::unix::prelude::OsStrExt};
+
+    const INVALID_UNICODE_BYTES: [u8; 4] = [0xF0, 0x90, 0x80, 0x67];
+
+    #[test]
+    fn display_error() -> Result<(), Box<dyn Error>> {
+        assert_eq!(
+            "unable to locate user's home directory, neither HOME or USER \
+                environment variables set",
+            XdgError::HomeNotFound.to_string()
+        );
+        assert_eq!(
+            "environment variable 'XDG_CONFIG_HOME' contains a relative path \
+                './config' (paths in XDG environment variables must \
+                be asbolute)",
+            XdgError::RelativePath {
+                env_var_key: "XDG_CONFIG_HOME",
+                path: PathBuf::from("./config"),
+            }
+            .to_string(),
+        );
+        assert_eq!(
+            "environment variable 'XDG_CONFIG_HOME' contains invalid unicode \
+                \"\\xF0\\x90\\x80g\"",
+            XdgError::InvalidUnicode {
+                env_var_key: "XDG_CONFIG_HOME",
+                env_var_val: OsStr::from_bytes(&INVALID_UNICODE_BYTES).to_os_string(),
+            }
+            .to_string(),
+        );
+
+        Ok(())
+    }
+}

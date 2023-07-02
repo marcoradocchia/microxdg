@@ -21,12 +21,12 @@ use std::path::{Path, PathBuf};
 ///
 /// User-specific XDG Application Subdirectories:
 ///
-/// | XDG Application Subdirectory                     | Environment variable | Fallback - `$HOME` set            | Fallback - `$HOME` not set            |
-/// | ------------------------------------------------ | -------------------- | --------------------------------- | ------------------------------------- |
-/// | [_App Cache_](method@XdgApp::app_cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache/<app_name>`         | `/home/$USER/.cache/<app_name>`       |
-/// | [_App Configuration_](method@XdgApp::app_config) | `$XDG_CONFIG_HOME`   | `$HOME/.config/<app_name>`        | `/home/$USER/.config/<app_name>`      |
-/// | [_App Data_](method@XdgApp::app_data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share/<app_name>`   | `/home/$USER/.local/share/<app_name>` |
-/// | [_App State_](method@XdgApp::app_state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state/<app_name>`   | `/home/$USER/.local/state/<app_name>` |
+/// | XDG Application Subdirectory                     | Environment variable | Fallback - `$HOME` set          | Fallback - `$HOME` not set            |
+/// | ------------------------------------------------ | -------------------- | ------------------------------- | ------------------------------------- |
+/// | [_App Cache_](method@XdgApp::app_cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache/<app_name>`       | `/home/$USER/.cache/<app_name>`       |
+/// | [_App Configuration_](method@XdgApp::app_config) | `$XDG_CONFIG_HOME`   | `$HOME/.config/<app_name>`      | `/home/$USER/.config/<app_name>`      |
+/// | [_App Data_](method@XdgApp::app_data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share/<app_name>` | `/home/$USER/.local/share/<app_name>` |
+/// | [_App State_](method@XdgApp::app_state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state/<app_name>` | `/home/$USER/.local/state/<app_name>` |
 ///
 /// System-wide, preference-ordered, XDG Base Directories:
 ///
@@ -1938,6 +1938,47 @@ mod test {
         assert_eq!(
             Some(config_file.path().into()),
             xdg.search_config_file("microxdg")?
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn search_app_sys_file() -> Result<(), XdgError> {
+        env::remove_var("XDG_CACHE_HOME");
+        env::remove_var("XDG_CONFIG_HOME");
+        env::remove_var("XDG_DATA_HOME");
+        env::remove_var("XDG_STATE_HOME");
+
+        env::set_var("HOME", "/home/user");
+        env::set_var("USER", "user");
+
+        let mut tmp_dir_builder = tempfile::Builder::new();
+        tmp_dir_builder.prefix("microxdg");
+        tmp_dir_builder.rand_bytes(4);
+
+        let mut tmp_file_builder = tempfile::Builder::new();
+        tmp_file_builder.prefix("microxdg");
+        tmp_file_builder.rand_bytes(0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn clone_debug() -> Result<(), XdgError> {
+        env::set_var("HOME", "/home/user");
+
+        let xdg = XdgApp::new("app_name")?;
+        assert_eq!(
+            "XdgApp { xdg: Xdg { home: \"/home/user\" }, name: \"app_name\" }",
+            format!("{xdg:?}")
+        );
+
+        #[allow(clippy::redundant_clone)]
+        let cloned_xdg = xdg.clone();
+        assert_eq!(
+            "XdgApp { xdg: Xdg { home: \"/home/user\" }, name: \"app_name\" }",
+            format!("{cloned_xdg:?}")
         );
 
         Ok(())

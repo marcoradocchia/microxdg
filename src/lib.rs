@@ -914,7 +914,7 @@ impl Xdg {
     /// If `file` is not found inside the _user-specific_ XDG directory, a lookup is performed on
     /// the _system-wide_, preference ordered directories specified by the `XDG_DATA_DIRS`.
     /// If `XDG_DATA_DIRS` is not set or is set to an empty value, the search falls back to
-    /// `/usr/local/share/:/usr/share/`.
+    /// `/usr/local/share:/usr/share`.
     ///
     /// # Note
     ///
