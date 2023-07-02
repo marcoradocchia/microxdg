@@ -1,6 +1,5 @@
 //! An [**XDG Base Directory Specification**](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)
-//! Rust library that aims to be conservative on memory allocation and overall
-//! memory footprint.
+//! Rust library that aims to be conservative on memory allocation and overall memory footprint.
 //!
 //! # Examples
 //!
@@ -12,7 +11,6 @@
 //!
 //! fn main() -> Result<(), XdgError> {
 //!     # env::set_var("XDG_CONFIG_HOME", "/home/user/.config");
-//!
 //!     let xdg = Xdg::new()?;
 //!     let config_dir = xdg.config()?;
 //!     debug_assert_eq!(Path::new("/home/user/.config"), &config_dir);
@@ -31,7 +29,6 @@
 //!
 //! fn main() -> Result<(), XdgError> {
 //!     # env::set_var("XDG_STATE_HOME", "/home/user/.local/state");
-//!
 //!     let xdg = XdgApp::new("app_name")?;
 //!     let app_state_dir = xdg.app_state()?;
 //!     debug_assert_eq!(Path::new("/home/user/.local/state/app_name"), &app_state_dir);
@@ -130,8 +127,7 @@ enum XdgSysDirs {
 }
 
 impl XdgSysDirs {
-    /// Returns the XDG environment variable associated to the XDG base
-    /// directories.
+    /// Returns the XDG environment variable associated to the XDG base directories.
     fn env_var(self) -> &'static str {
         match self {
             XdgSysDirs::Config => "XDG_CONFIG_DIRS",
@@ -139,8 +135,7 @@ impl XdgSysDirs {
         }
     }
 
-    /// Returns the fallback directories in the case the XDG environment
-    /// variable is not set.
+    /// Returns the fallback directories in the case the XDG environment variable is not set.
     #[inline]
     fn fallback(self) -> impl Iterator<Item = PathBuf> {
         match self {
@@ -154,9 +149,9 @@ impl XdgSysDirs {
 
 /// _An implementation of the [XDG Base Directory Specification](<https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html>)_.
 ///
-/// Each of the base directory methods privileges the relative environment
-/// variable's value and falls back to the corresponding default whenever the
-/// environment variable is not set or set to an empty value.
+/// Each of the base directory methods privileges the relative environment variable's value and
+/// falls back to the corresponding default whenever the environment variable is not set or set to
+/// an empty value.
 ///
 /// User-specific Base Directories:
 ///
@@ -171,16 +166,15 @@ impl XdgSysDirs {
 ///
 /// System-wide, preference-ordered, Base Directories:
 ///
-/// | XDG Base Directory                        | Environment variable | Fallback                        |
-/// | ----------------------------------------- | -------------------- | ------------------------------- |
-/// | [_Configuration_](method@Xdg::sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg`                      |
+/// | XDG Base Directory                        | Environment variable | Fallback                      |
+/// | ----------------------------------------- | -------------------- | ----------------------------- |
+/// | [_Configuration_](method@Xdg::sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg`                    |
 /// | [_Data_](method@Xdg::sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share:/usr/share` |
 ///
 /// # Examples
 ///
-/// The example below retrieves the _user-specific XDG configuration directory_
-/// by reading the value of the `XDG_CONFIG_HOME` environment variable
-/// (similarly the other XDG directories):
+/// The example below retrieves the _user-specific XDG configuration directory_ by reading the
+/// value of the `XDG_CONFIG_HOME` environment variable (similarly the other XDG directories):
 /// ```rust
 /// # use std::{error::Error, path::PathBuf};
 /// # use microxdg::{Xdg, XdgError};
@@ -193,8 +187,8 @@ impl XdgSysDirs {
 /// # }
 /// ```
 ///
-/// In the case the `XDG_CONFIG_DIR` environment variable is not set,
-/// `$HOME/.config` is used as a fallback (similarly the other XDG directories):
+/// In the case the `XDG_CONFIG_DIR` environment variable is not set, `$HOME/.config` is used as a
+/// fallback (similarly the other XDG base directories):
 /// ```rust
 /// # use std::{error::Error, path::PathBuf};
 /// # use microxdg::{Xdg, XdgError};
@@ -208,9 +202,8 @@ impl XdgSysDirs {
 /// # }
 /// ```
 ///
-/// Ultimately, if also the `HOME` environment variable is not set (very
-/// unlikely), `/home/$USER/.config` is used as a fallback (similarly the other
-/// XDG directories):
+/// Ultimately, if also the `HOME` environment variable is not set (very unlikely),
+/// `/home/$USER/.config` is used as a fallback (similarly the other XDG base directories):
 /// ```rust
 /// # use std::{error::Error, path::PathBuf};
 /// # use microxdg::{Xdg, XdgError};
@@ -231,8 +224,7 @@ pub struct Xdg {
 }
 
 impl Xdg {
-    /// Constructs a new [`Xdg`] instance from a string representation of the
-    /// `HOME` path.
+    /// Constructs a new [`Xdg`] instance from the `HOME` environment varaible's value.
     #[inline]
     #[must_use]
     fn from_string(home: String) -> Xdg {
@@ -245,8 +237,7 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// This function returns an error if neither `HOME` or `USER` environment
-    /// variable is set.
+    /// This function returns an error if neither `HOME` or `USER` environment variable is set.
     pub fn new() -> Result<Xdg, XdgError> {
         if let Ok(home) = env::var("HOME") {
             return Ok(Xdg::from_string(home));
@@ -263,8 +254,7 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// This function returns an error if neither `HOME` or `USER` environment
-    /// variable is set.
+    /// This function returns an error if neither `HOME` or `USER` environment variable is set.
     pub fn new_app(app_name: &'static str) -> Result<XdgApp, XdgError> {
         XdgApp::new(app_name)
     }
@@ -280,8 +270,8 @@ impl Xdg {
     ///
     /// # Errors
     ///
-    /// This function returns an error if the value represents a relative path:
-    /// XDG environment variables must be set to absolute paths.
+    /// This function returns an error if the XDG environment variable is set, but its value
+    /// represents a relative path: XDG environment variables must be set to absolute paths.
     #[inline]
     fn validate_path<P>(env_var_key: &'static str, env_var_val: P) -> Result<PathBuf, XdgError>
     where
@@ -289,7 +279,7 @@ impl Xdg {
     {
         let path: PathBuf = env_var_val.into();
         if path.is_relative() {
-            // XDG environment variable contains a relative path (only absolute paths allowed).
+            // XDG environment variable set, but its value represents a relative path.
             return Err(XdgError::RelativePath { env_var_key, path });
         }
 
@@ -307,32 +297,31 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set, but its value represents a relative path;
+    /// - the XDG environment variable is set, but its value represents invalid unicode.
     #[inline]
     fn get_env_var(env_var_key: &'static str) -> Result<Option<String>, XdgError> {
         match env::var(env_var_key) {
-            // XDG environment variable is set and non-empty.
+            // XDG environment variable is set to a non-empty value.
             Ok(env_var_val) if !env_var_val.is_empty() => Ok(Some(env_var_val)),
-            // XDG environment variable is set but contains invalid unicode.
+            // XDG environment variable is set, but its value represents invalid unicode.
             Err(VarError::NotUnicode(env_var_val)) => Err(XdgError::InvalidUnicode {
                 env_var_key,
                 env_var_val,
             }),
-            // XDG environment variable is not set or set but empty.
+            // XDG environment variable is not set or set to an empty value.
             _ => Ok(None),
         }
     }
 
-    /// Returns the path set to an XDG environment variable or a fallback
-    /// in the case the environment variable is not set or is set to an empty
-    /// value.
+    /// Returns the path set to an XDG environment variable or a fallback in the case the
+    /// environment variable is not set or is set to an empty value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set, but its value represents a relative path;
+    /// - the XDG environment variable is set, but its value represents invalid unicode.
     #[inline]
     fn get_dir_path(&self, dir: XdgDir) -> Result<PathBuf, XdgError> {
         let env_var_key = dir.env_var();
@@ -342,16 +331,16 @@ impl Xdg {
         }
     }
 
-    /// Returns the _user-specific_ XDG **cache** directory specified by the
-    /// `XDG_CACHE_HOME` environment variable.
-    /// Falls back to `$HOME/.cache` if `XDG_CACHE_HOME` is not set or is set
-    /// to an empty value.
+    /// Returns the _user-specific_ XDG **cache** directory specified by the `XDG_CACHE_HOME`
+    /// environment variable. Falls back to `$HOME/.cache` if `XDG_CACHE_HOME` is not set or is
+    /// set to an empty value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
-    /// - the `XDG_CACHE_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_CACHE_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CACHE_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -368,16 +357,16 @@ impl Xdg {
         self.get_dir_path(XdgDir::Cache)
     }
 
-    /// Returns the _user-specific_ XDG **configuration** directory specified
-    /// by the `XDG_CONFIG_HOME` environment variable.
-    /// Falls back to `$HOME/.config` if `XDG_CONFIG_HOME` is not set or is set
-    /// to an empty value.
+    /// Returns the _user-specific_ XDG **configuration** directory specified by the
+    /// `XDG_CONFIG_HOME` environment variable. Falls back to `$HOME/.config` if `XDG_CONFIG_HOME`
+    /// is not set or is set to an empty value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
-    /// - the `XDG_CONFIG_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_CONFIG_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CONFIG_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -394,16 +383,17 @@ impl Xdg {
         self.get_dir_path(XdgDir::Config)
     }
 
-    /// Returns the _user-specific_ XDG **data** directory specified by the
-    /// `XDG_DATA_HOME` environment variable.
-    /// Falls back to `$HOME/.local/share` if `XDG_DATA_HOME` is not set or is
-    /// set to an empty value.
+    /// Returns the _user-specific_ XDG **data** directory specified by the `XDG_DATA_HOME`
+    /// environment variable. Falls back to `$HOME/.local/share` if `XDG_DATA_HOME` is not set or
+    /// is set to an empty value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
-    /// - the `XDG_DATA_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_DATA_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_DATA_HOME` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Exapmles
     ///
@@ -420,16 +410,16 @@ impl Xdg {
         self.get_dir_path(XdgDir::Data)
     }
 
-    /// Returns the _user-specific_ XDG **state** directory specified by
-    /// the `XDG_STATE_HOME` environment variable.
-    /// Falls back to `$HOME/.local/state` if `XDG_STATE_HOME` is not set or is
-    /// set to an empty value.
+    /// Returns the _user-specific_ XDG **state** directory specified by the `XDG_STATE_HOME`
+    /// environment variable. Falls back to `$HOME/.local/state` if `XDG_STATE_HOME` is not set or
+    /// is set to an empty value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
-    /// - the `XDG_STATE_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_STATE_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_STATE_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -446,21 +436,22 @@ impl Xdg {
         self.get_dir_path(XdgDir::State)
     }
 
-    /// Returns the XDG **runtime** directory specified by the `XDG_RUNTIME_DIR`
-    /// environment variable.
+    /// Returns the XDG **runtime** directory specified by the `XDG_RUNTIME_DIR` environment
+    /// variable.
     ///
     /// # Note
     ///
     /// This method returns:
     /// - `Some` if the `XDG_RUNTIME_DIR` environment variable is set;
-    /// - `None` if the `XDG_RUNTIME_DIR` environment variable is missing or
-    ///   set to an empty value.
+    /// - `None` if the `XDG_RUNTIME_DIR` environment variable is not set or is set to an empty
+    ///   value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_RUNTIME_DIR` environment variable is set to a relative path;
-    /// - the `XDG_RUNTIME_DIR` environment variable contains invalid unicode.
+    /// - the `XDG_RUNTIME_DIR` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_RUNTIME_DIR` environment is set, but its value represents invalid unicode.
     ///
     /// # Examples
     ///
@@ -483,8 +474,7 @@ impl Xdg {
             .transpose()
     }
 
-    /// Returns the _user-specific_ XDG **executable** directory specified by
-    /// `$HOME/.local/bin`.
+    /// Returns the _user-specific_ XDG **executable** directory specified by `$HOME/.local/bin`.
     ///
     /// # Examples
     ///
@@ -502,8 +492,8 @@ impl Xdg {
         self.home.join(".local/bin")
     }
 
-    /// Returns an iterator over the _sistem-wide_ directories set to a system
-    /// XDG environment variable.
+    /// Returns an iterator over the _sistem-wide_ directories set to a system XDG environment
+    /// variable.
     #[inline]
     fn iter_sys_dir_paths<'val>(
         env_var_key: &'static str,
@@ -514,15 +504,14 @@ impl Xdg {
             .map(move |path| Xdg::validate_path(env_var_key, path))
     }
 
-    /// Returns the preference-ordered _system-wide_ directories set to a system
-    /// XDG environment variable or a fallback in the case the environment
-    /// variable is not set or is set to an empty value.
+    /// Returns the _system-wide_, preference-ordered, XDG directories or a fallback if the
+    /// environment variable is not set or is set to an empty value.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set, but its value represents a relative path;
+    /// - the XDG environment variable is set, but its value represents invalid unicode.
     #[inline]
     fn get_sys_dir_paths(dirs: XdgSysDirs) -> Result<Vec<PathBuf>, XdgError> {
         let env_var_key = dirs.env_var();
@@ -532,24 +521,25 @@ impl Xdg {
         }
     }
 
-    /// Returns the _system-wide_, preference-ordered, XDG **configuration**
-    /// directories specified by the `XDG_CONFIG_DIRS` environment variable.
-    /// Falls back to `/etc/xdg` if `XDG_CONFIG_DIRS` is not
-    /// set or is set to an empty value.
+    /// Returns the _system-wide_, preference-ordered, XDG **configuration** directories specified
+    /// by the `XDG_CONFIG_DIRS` environment variable. Falls back to `/etc/xdg` if
+    /// `XDG_CONFIG_DIRS` is not set or is set to an empty value.
     ///
     /// # Note
     ///
-    /// Used to search for config files in addition to the `XDG_CONFIG_HOME`
-    /// user-specific base directory.
+    /// Used to search for config files in addition to the `XDG_CONFIG_HOME` user-specific base
+    /// directory.
     ///
-    /// The order denotes the importance: the first directory is the most
-    /// important, the last directory the least important.
+    /// The order denotes the importance: the first directory is the most important, the last
+    /// directory the least important.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CONFIG_DIRS` environment variable is set to a relative path;
-    /// - the `XDG_CONFIG_DIRS` environment variable is set to invalid unicode.
+    /// - the `XDG_CONFIG_DIRS` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CONFIG_DIRS` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Examples
     ///
@@ -565,24 +555,25 @@ impl Xdg {
         Xdg::get_sys_dir_paths(XdgSysDirs::Config)
     }
 
-    /// Returns the system-wide, preference-ordered, XDG **data**
-    /// directories specified by the `XDG_DATA_DIRS` environment variable.
-    /// Falls back to `/usr/local/share/:/usr/share/` if `XDG_DATA_DIRS`
-    /// is not set or is set to an empty value.
+    /// Returns the system-wide, preference-ordered, XDG **data** directories specified by the
+    /// `XDG_DATA_DIRS` environment variable. Falls back to `/usr/local/share:/usr/share` if
+    /// `XDG_DATA_DIRS` is not set or is set to an empty value.
     ///
     /// # Note
     ///
-    /// Used to search for data files in addition to the `XDG_DATA_HOME`
-    /// user-specific base directory.
+    /// Used to search for data files in addition to the `XDG_DATA_HOME` user-specific base
+    /// directory.
     ///
-    /// The order denotes the importance: the first directory is the most
-    /// important, the last directory the least important.
+    /// The order denotes the importance: the first directory is the most important, the last
+    /// directory the least important.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_DATA_DIRS` environment variable is set to a relative path;
-    /// - the `XDG_DATA_DIRS` environment variable is set to invalid unicode.
+    /// - the `XDG_DATA_DIRS` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_DATA_DIRS` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Examples
     ///
@@ -598,13 +589,13 @@ impl Xdg {
         Xdg::get_sys_dir_paths(XdgSysDirs::Data)
     }
 
-    /// Returns the _user-specific_ XDG file path as `<xdg_dir_path>/<file>`.
+    /// Returns the _user-specific_ XDG file path as `<xdg_dir>/<file>`.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set, but its value represents a relative path;
+    /// - the XDG environment variable is set, but its value represents invalid unicode.
     #[inline]
     fn get_file_path<P>(&self, dir: XdgDir, file: P) -> Result<PathBuf, XdgError>
     where
@@ -613,21 +604,19 @@ impl Xdg {
         self.get_dir_path(dir).map(|path| path.append(file))
     }
 
-    /// Returns the _user-specific_ XDG **cache** file as
-    /// `$XDG_CACHE_HOME/<file>`.
-    /// Falls back to `$HOME/.cache/<file>` if `XDG_CACHE_HOME` is not set or
-    /// is set to an empty value.
+    /// Returns the _user-specific_ XDG **cache** file as `$XDG_CACHE_HOME/<file>`. Falls back to
+    /// `$HOME/.cache/<file>` if `XDG_CACHE_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a
-    /// regular file.
+    /// This method does not guarantee either the path exists or points to a regular file.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
-    /// - the `XDG_CACHE_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_CACHE_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CACHE_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -647,21 +636,19 @@ impl Xdg {
         self.get_file_path(XdgDir::Cache, file)
     }
 
-    /// Returns the _user-specific_ XDG **config** file as
-    /// `$XDG_CONFIG_HOME/<file>`.
-    /// Falls back to `$HOME/.config/<file>` if `XDG_CONFIG_HOME` is not set or
-    /// is set to an empty value.
+    /// Returns the _user-specific_ XDG **config** file as `$XDG_CONFIG_HOME/<file>`. Falls back
+    /// to `$HOME/.config/<file>` if `XDG_CONFIG_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a
-    /// regular file.
+    /// This method does not guarantee either the path exists or points to a regular file.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
-    /// - the `XDG_CONFIG_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_CONFIG_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CONFIG_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -681,21 +668,19 @@ impl Xdg {
         self.get_file_path(XdgDir::Config, file)
     }
 
-    /// Returns the _user-specific_ XDG **data** file as
-    /// `$XDG_DATA_HOME/<file>`.
-    /// Falls back to `$HOME/.local/share/<file>` if `XDG_DATA_HOME` is
-    /// not set or is set to an empty value.
+    /// Returns the _user-specific_ XDG **data** file as `$XDG_DATA_HOME/<file>`. Falls back to
+    /// `$HOME/.local/share/<file>` if `XDG_DATA_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a
-    /// regular file.
+    /// This method does not guarantee either the path exists or points to a regular file.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
-    /// - the `XDG_DATA_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_DATA_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_DATA_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -715,21 +700,19 @@ impl Xdg {
         self.get_file_path(XdgDir::Data, file)
     }
 
-    /// Returns the _user-specific_ XDG **state** file as
-    /// `$XDG_STATE_HOME/<file>`.
-    /// Falls back to `$HOME/.local/state/<file>` if `XDG_STATE_HOME` is
-    /// not set or is set to an empty value.
+    /// Returns the _user-specific_ XDG **state** file as `$XDG_STATE_HOME/<file>`. Falls back to
+    /// `$HOME/.local/state/<file>` if `XDG_STATE_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
-    /// This method does not guarantee either the path exists or points to a
-    /// regular file.
+    /// This method does not guarantee either the path exists or points to a regular file.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
-    /// - the `XDG_STATE_HOME` environment variable contains invalid unicode.
+    /// - the `XDG_STATE_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_STATE_HOME` environment is set, but its value represents invalid unicode.
     ///
     /// # Exapmles
     ///
@@ -760,8 +743,8 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set, but its value represents a relative path;
+    /// - the XDG environment variable is set, but its value represents invalid unicode.
     #[inline]
     fn search_usr_file<P>(&self, dir: XdgDir, file: P) -> Result<Option<PathBuf>, XdgError>
     where
@@ -773,22 +756,21 @@ impl Xdg {
         })
     }
 
-    /// Searches for `file` inside a _system-wide_, preference-ordered, set of
-    /// XDG directories.
+    /// Searches for `file` inside a _system-wide_, preference-ordered, set of XDG directories.
     ///
     /// # Note
     ///
     /// This method returns:
-    /// - `Some` if the file is found inside one of the preference-ordered set
-    ///   of XDG system directories;
-    /// - `None` if the file is **not** found inside any of the
-    ///   preference-ordered set of XDG system directories.
+    /// - `Some` if the file is found inside one of the preference-ordered set of XDG system
+    ///   directories;
+    /// - `None` if the file is **not** found inside any of the preference-ordered set of XDG
+    ///   system directories.
     ///
     /// # Errors
     ///
     /// This funciton returns an error in the following cases:
-    /// - the XDG environment variable is set to a relative path;
-    /// - the XDG environment variable is set to invalid unicode.
+    /// - the XDG environment variable is set, but its value represents a relative path;
+    /// - the XDG environment variable is set, but its value represents invalid unicode.
     #[inline]
     fn search_sys_file<P>(dirs: XdgSysDirs, file: P) -> Result<Option<PathBuf>, XdgError>
     where
@@ -820,10 +802,10 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set to
-    ///   a relative path;
-    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set to
-    ///   invalid unicode.
+    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set, but its value
+    ///   represents a relative path;
+    /// - the XDG environment variable ([`XdgDir`] or [`XdgSysDir`]) is set, but its value
+    ///   contains invalid unicode.
     #[inline]
     fn search_file<P>(&self, dir: XdgDir, file: P) -> Result<Option<PathBuf>, XdgError>
     where
@@ -842,10 +824,9 @@ impl Xdg {
         Ok(None)
     }
 
-    /// Searches for `file` inside the _user-specific_ XDG **cache** directory
-    /// specified by the `XDG_CACHE_HOME` environment variable.
-    /// The search falls back to `$HOME/.cache` if `XDG_CACHE_HOME` is not set
-    /// or is set to an empty value.
+    /// Searches for `file` inside the _user-specific_ XDG **cache** directory specified by the
+    /// `XDG_CACHE_HOME` environment variable. The search falls back to `$HOME/.cache` if
+    /// `XDG_CACHE_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
@@ -856,8 +837,10 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CACHE_HOME` environment variable is set to a relative path;
-    /// - the `XDG_CACHE_HOME` environment variable is set to invalid unicode.
+    /// - the `XDG_CACHE_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CACHE_HOME` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Examples
     ///
@@ -880,16 +863,14 @@ impl Xdg {
         self.search_file(XdgDir::Cache, file)
     }
 
-    /// Searches for `file` inside the _user-specific_ XDG **configuration**
-    /// directory specified by the `XDG_CONFIG_HOME` environment variable.
-    /// If `XDG_CONFIG_HOME` is not set or is set to an empty value, the
-    /// search falls back to `$HOME/.config`.
+    /// Searches for `file` inside the _user-specific_ XDG **configuration** directory specified
+    /// by the `XDG_CONFIG_HOME` environment variable. If `XDG_CONFIG_HOME` is not set or is set
+    /// to an empty value, the search falls back to `$HOME/.config`.
     ///
-    /// If `file` is not found inside the _user-specific_ XDG directory, a
-    /// lookup is performed on the _system-wide_, preference ordered
-    /// directories specified by the `XDG_CONFIG_DIRS`.
-    /// If `XDG_CONFIG_DIRS` is not set or is set to an empty value, the
-    /// search falls back to `/etc/xdg`.
+    /// If `file` is not found inside the _user-specific_ XDG directory, a lookup is performed on
+    /// the _system-wide_, preference ordered directories specified by the `XDG_CONFIG_DIRS`.
+    /// If `XDG_CONFIG_DIRS` is not set or is set to an empty value, the search falls back to
+    /// `/etc/xdg`.
     ///
     /// # Note
     ///
@@ -900,8 +881,10 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CONFIG_HOME` environment variable is set to a relative path;
-    /// - the `XDG_CONFIG_HOME` environment variable is set to invalid unicode.
+    /// - the `XDG_CONFIG_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_CONFIG_HOME` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Examples
     ///
@@ -924,16 +907,14 @@ impl Xdg {
         self.search_file(XdgDir::Config, file)
     }
 
-    /// Searches for `file` inside the _user-specific_ XDG **data**
-    /// directory specified by the `XDG_DATA_HOME` environment variable.
-    /// If `XDG_DATA_HOME` is not set or is set to an empty value, the
-    /// search falls back to `$HOME/.local/share`.
+    /// Searches for `file` inside the _user-specific_ XDG **data** directory specified by the
+    /// `XDG_DATA_HOME` environment variable. If `XDG_DATA_HOME` is not set or is set to an empty
+    /// value, the search falls back to `$HOME/.local/share`.
     ///
-    /// If `file` is not found inside the _user-specific_ XDG directory, a
-    /// lookup is performed on the _system-wide_, preference ordered
-    /// directories specified by the `XDG_DATA_DIRS`.
-    /// If `XDG_DATA_DIRS` is not set or is set to an empty value, the
-    /// search falls back to `/usr/local/share/:/usr/share/`.
+    /// If `file` is not found inside the _user-specific_ XDG directory, a lookup is performed on
+    /// the _system-wide_, preference ordered directories specified by the `XDG_DATA_DIRS`.
+    /// If `XDG_DATA_DIRS` is not set or is set to an empty value, the search falls back to
+    /// `/usr/local/share/:/usr/share/`.
     ///
     /// # Note
     ///
@@ -944,8 +925,10 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_DATA_HOME` environment variable is set to a relative path;
-    /// - the `XDG_DATA_HOME` environment variable is set to invalid unicode.
+    /// - the `XDG_DATA_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_DATA_HOME` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Examples
     ///
@@ -968,10 +951,9 @@ impl Xdg {
         self.search_file(XdgDir::Data, file)
     }
 
-    /// Searches for `file` inside the _user-specific_ XDG **state** directory
-    /// specified by the `XDG_STATE_HOME` environment variable.
-    /// The search falls back to `$HOME/.local/state` if `XDG_STATE_HOME` is
-    /// not set or is set to an empty value.
+    /// Searches for `file` inside the _user-specific_ XDG **state** directory specified by the
+    /// `XDG_STATE_HOME` environment variable. The search falls back to `$HOME/.local/state` if
+    /// `XDG_STATE_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
@@ -982,8 +964,10 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_STATE_HOME` environment variable is set to a relative path;
-    /// - the `XDG_STATE_HOME` environment variable is set to invalid unicode.
+    /// - the `XDG_STATE_HOME` environment variable is set, but its value represents a relative
+    ///   path;
+    /// - the `XDG_STATE_HOME` environment variable is set, but its value represents invalid
+    ///   unicode.
     ///
     /// # Examples
     ///
