@@ -155,21 +155,21 @@ impl XdgSysDirs {
 ///
 /// User-specific Base Directories:
 ///
-/// | XDG Base Directory                    | Environment variable | Fallback - `$HOME` set | Fallback - `$HOME` not set |
+/// | XDG Base Directory                    | Environment variable | Fallback - `HOME` set  | Fallback - `HOME` not set  |
 /// | ------------------------------------- | -------------------- | ---------------------- | -------------------------- |
-/// | [_Cache_](method@Xdg::cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache`         | `/home/$USER/.cache`       |
-/// | [_Configuration_](method@Xdg::config) | `$XDG_CONFIG_HOME`   | `$HOME/.config`        | `/home/$USER/.config`      |
-/// | [_Data_](method@Xdg::data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share`   | `/home/$USER/.local/share` |
-/// | [_State_](method@Xdg::state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state`   | `/home/$USER/.local/state` |
-/// | [_Runtime_](method@Xdg::runtime)      | `$XDG_RUNTIME_DIR`   | -                      | -                          |
+/// | [_Cache_](method@Xdg::cache)          | `XDG_CACHE_HOME`     | `$HOME/.cache`         | `/home/$USER/.cache`       |
+/// | [_Configuration_](method@Xdg::config) | `XDG_CONFIG_HOME`    | `$HOME/.config`        | `/home/$USER/.config`      |
+/// | [_Data_](method@Xdg::data)            | `XDG_DATA_HOME`      | `$HOME/.local/share`   | `/home/$USER/.local/share` |
+/// | [_State_](method@Xdg::state)          | `XDG_STATE_HOME`     | `$HOME/.local/state`   | `/home/$USER/.local/state` |
+/// | [_Runtime_](method@Xdg::runtime)      | `XDG_RUNTIME_DIR`    | -                      | -                          |
 /// | [_Executable_](method@Xdg::exec)      | -                    | `$HOME/.local/bin`     | `/home/$USER/.local/bin`   |
 ///
 /// System-wide, preference-ordered, Base Directories:
 ///
 /// | XDG Base Directory                        | Environment variable | Fallback                      |
 /// | ----------------------------------------- | -------------------- | ----------------------------- |
-/// | [_Configuration_](method@Xdg::sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg`                    |
-/// | [_Data_](method@Xdg::sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share:/usr/share` |
+/// | [_Configuration_](method@Xdg::sys_config) | `XDG_CONFIG_DIRS`    | `/etc/xdg`                    |
+/// | [_Data_](method@Xdg::sys_data)            | `XDG_DATA_DIRS`      | `/usr/local/share:/usr/share` |
 ///
 /// # Examples
 ///
@@ -530,7 +530,7 @@ impl Xdg {
     /// Used to search for config files in addition to the `XDG_CONFIG_HOME` user-specific base
     /// directory.
     ///
-    /// The order denotes the importance: the first directory is the most important, the last
+    /// The order denotes the importance: the first directory the most important, the last
     /// directory the least important.
     ///
     /// # Errors
@@ -564,7 +564,7 @@ impl Xdg {
     /// Used to search for data files in addition to the `XDG_DATA_HOME` user-specific base
     /// directory.
     ///
-    /// The order denotes the importance: the first directory is the most important, the last
+    /// The order denotes the importance: the first directory the most important, the last
     /// directory the least important.
     ///
     /// # Errors

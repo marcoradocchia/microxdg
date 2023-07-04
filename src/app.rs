@@ -10,37 +10,37 @@ use std::path::{Path, PathBuf};
 ///
 /// User-specific Base Directories:
 ///
-/// | XDG Base Directory                       | Environment variable | Fallback - `$HOME` set | Fallback - `$HOME` not set |
+/// | XDG Base Directory                       | Environment variable | Fallback - `HOME` set  | Fallback - `HOME` not set  |
 /// | ---------------------------------------- | -------------------- | ---------------------- | -------------------------- |
-/// | [_Cache_](method@XdgApp::cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache`         | `/home/$USER/.cache`       |
-/// | [_Configuration_](method@XdgApp::config) | `$XDG_CONFIG_HOME`   | `$HOME/.config`        | `/home/$USER/.config`      |
-/// | [_Data_](method@XdgApp::data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share`   | `/home/$USER/.local/share` |
-/// | [_State_](method@XdgApp::state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state`   | `/home/$USER/.local/state` |
-/// | [_Runtime_](method@XdgApp::runtime)      | `$XDG_RUNTIME_DIR`   | -                      | -                          |
+/// | [_Cache_](method@XdgApp::cache)          | `XDG_CACHE_HOME`     | `$HOME/.cache`         | `/home/$USER/.cache`       |
+/// | [_Configuration_](method@XdgApp::config) | `XDG_CONFIG_HOME`    | `$HOME/.config`        | `/home/$USER/.config`      |
+/// | [_Data_](method@XdgApp::data)            | `XDG_DATA_HOME`      | `$HOME/.local/share`   | `/home/$USER/.local/share` |
+/// | [_State_](method@XdgApp::state)          | `XDG_STATE_HOME`     | `$HOME/.local/state`   | `/home/$USER/.local/state` |
+/// | [_Runtime_](method@XdgApp::runtime)      | `XDG_RUNTIME_DIR`    | -                      | -                          |
 /// | [_Executable_](method@XdgApp::exec)      | -                    | `$HOME/.local/bin`     | `/home/$USER/.local/bin`   |
 ///
 /// User-specific XDG Application Subdirectories:
 ///
-/// | XDG Application Subdirectory                     | Environment variable | Fallback - `$HOME` set          | Fallback - `$HOME` not set            |
+/// | XDG Application Subdirectory                     | Environment variable | Fallback - `HOME` set           | Fallback - `HOME` not set             |
 /// | ------------------------------------------------ | -------------------- | ------------------------------- | ------------------------------------- |
-/// | [_App Cache_](method@XdgApp::app_cache)          | `$XDG_CACHE_HOME`    | `$HOME/.cache/<app_name>`       | `/home/$USER/.cache/<app_name>`       |
-/// | [_App Configuration_](method@XdgApp::app_config) | `$XDG_CONFIG_HOME`   | `$HOME/.config/<app_name>`      | `/home/$USER/.config/<app_name>`      |
-/// | [_App Data_](method@XdgApp::app_data)            | `$XDG_DATA_HOME`     | `$HOME/.local/share/<app_name>` | `/home/$USER/.local/share/<app_name>` |
-/// | [_App State_](method@XdgApp::app_state)          | `$XDG_STATE_HOME`    | `$HOME/.local/state/<app_name>` | `/home/$USER/.local/state/<app_name>` |
+/// | [_App Cache_](method@XdgApp::app_cache)          | `XDG_CACHE_HOME`     | `$HOME/.cache/<app_name>`       | `/home/$USER/.cache/<app_name>`       |
+/// | [_App Configuration_](method@XdgApp::app_config) | `XDG_CONFIG_HOME`    | `$HOME/.config/<app_name>`      | `/home/$USER/.config/<app_name>`      |
+/// | [_App Data_](method@XdgApp::app_data)            | `XDG_DATA_HOME`      | `$HOME/.local/share/<app_name>` | `/home/$USER/.local/share/<app_name>` |
+/// | [_App State_](method@XdgApp::app_state)          | `XDG_STATE_HOME`     | `$HOME/.local/state/<app_name>` | `/home/$USER/.local/state/<app_name>` |
 ///
 /// System-wide, preference-ordered, XDG Base Directories:
 ///
 /// | XDG Base Directory                           | Environment variable | Fallback                      |
 /// | -------------------------------------------- | -------------------- | ----------------------------- |
-/// | [_Configuration_](method@XdgApp::sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg`                    |
-/// | [_Data_](method@XdgApp::sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share:/usr/share` |
+/// | [_Configuration_](method@XdgApp::sys_config) | `XDG_CONFIG_DIRS`    | `/etc/xdg`                    |
+/// | [_Data_](method@XdgApp::sys_data)            | `XDG_DATA_DIRS`      | `/usr/local/share:/usr/share` |
 ///
 /// System-wide, preference-ordered, XDG Application Subdirectories:
 ///
 /// | XDG Base Directory                               | Environment variable | Fallback                                            |
 /// | ------------------------------------------------ | -------------------- | --------------------------------------------------- |
-/// | [_Configuration_](method@XdgApp::app_sys_config) | `$XDG_CONFIG_DIRS`   | `/etc/xdg/<app_name>`                               |
-/// | [_Data_](method@XdgApp::app_sys_data)            | `$XDG_DATA_DIRS`     | `/usr/local/share/<app_name>:/usr/share/<app_name>` |
+/// | [_Configuration_](method@XdgApp::app_sys_config) | `XDG_CONFIG_DIRS`    | `/etc/xdg/<app_name>`                               |
+/// | [_Data_](method@XdgApp::app_sys_data)            | `XDG_DATA_DIRS`      | `/usr/local/share/<app_name>:/usr/share/<app_name>` |
 ///
 /// # Examples
 ///
@@ -292,8 +292,8 @@ impl XdgApp {
     /// Used to search for config files in addition to the `XDG_CONFIG_HOME` user-specific base
     /// directory.
     ///
-    /// The order denotes the importance: the first directory is the most important, the last
-    /// directory is the least important.
+    /// The order denotes the importance: the first directory the most important, the last
+    /// directory the least important.
     ///
     /// # Errors
     ///
@@ -324,6 +324,9 @@ impl XdgApp {
     ///
     /// Used to search for data files in addition to the `XDG_DATA_HOME` user-specific base
     /// directory.
+    ///
+    /// The order denotes the importance: the first directory the most important, the last
+    /// directory the least important.
     ///
     /// # Errors
     ///
@@ -366,7 +369,7 @@ impl XdgApp {
     ///
     /// # Note
     ///
-    /// This method uses the XDG cache directory specified by the `XDG_CACHE_HOME` if available.
+    /// This method uses the XDG cache directory specified by the `XDG_CACHE_HOME`, if available.
     /// Falls back to `$HOME/.cache/<app_name>` if `XDG_CACHE_HOME` is not set or is set to an
     /// empty value.
     ///
@@ -430,7 +433,7 @@ impl XdgApp {
     ///
     /// # Note
     ///
-    /// This method uses the XDG data directory specified by the `XDG_DATA_HOME` if available.
+    /// This method uses the XDG data directory specified by the `XDG_DATA_HOME`, if available.
     /// Falls back to `$HOME/.local/share/<app_name>` if `XDG_DATA_HOME` is not set or is set to
     /// an empty value.
     ///
@@ -462,7 +465,7 @@ impl XdgApp {
     ///
     /// # Note
     ///
-    /// This method uses the XDG state directory specified by the `XDG_STATE_HOME` if available.
+    /// This method uses the XDG state directory specified by the `XDG_STATE_HOME`, if available.
     /// Falls back to `$HOME/.local/state/<name>` if `XDG_STATE_HOME` is not set or is set to an
     /// empty value.
     ///
@@ -820,9 +823,8 @@ impl XdgApp {
     }
 
     /// Returns the _user-specific_ XDG **state** application file as
-    /// `$XDG_STATE_HOME/<app_name>/<file>`.
-    /// Falls back to `$HOME/.local/state/<app_name>/<file>` if `XDG_STATE_HOME` is not set or is
-    /// set to an empty value.
+    /// `$XDG_STATE_HOME/<app_name>/<file>`. Falls back to `$HOME/.local/state/<app_name>/<file>`
+    /// if `XDG_STATE_HOME` is not set or is set to an empty value.
     ///
     /// # Note
     ///
