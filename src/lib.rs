@@ -536,8 +536,8 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_CONFIG_DIRS` environment variable is set, but its value represents a relative
-    ///   path;
+    /// - the `XDG_CONFIG_DIRS` environment variable is set, but one (or more) path(s) in the
+    ///   colon separated value represents a relative path;
     /// - the `XDG_CONFIG_DIRS` environment variable is set, but its value represents invalid
     ///   unicode.
     ///
@@ -570,8 +570,8 @@ impl Xdg {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - the `XDG_DATA_DIRS` environment variable is set, but its value represents a relative
-    ///   path;
+    /// - the `XDG_DATA_DIRS` environment variable is set, but one (or more) path(s) in the colon
+    ///   separated value represents a relative path;
     /// - the `XDG_DATA_DIRS` environment variable is set, but its value represents invalid
     ///   unicode.
     ///
@@ -884,7 +884,13 @@ impl Xdg {
     /// - the `XDG_CONFIG_HOME` environment variable is set, but its value represents a relative
     ///   path;
     /// - the `XDG_CONFIG_HOME` environment variable is set, but its value represents invalid
-    ///   unicode.
+    ///   unicode;
+    /// - `file` was **not** found inside the _user-specific_ XDG config directory and:
+    ///     - the `XDG_CONFIG_DIRS` environment variable is set, but one (or more) path(s) in the
+    ///       colon separated value represents a relative path;
+    ///     - the `XDG_CONFIG_DIRS` environment variable is set, but its value represents invalid
+    ///       unicode.
+    ///
     ///
     /// # Examples
     ///
@@ -928,7 +934,12 @@ impl Xdg {
     /// - the `XDG_DATA_HOME` environment variable is set, but its value represents a relative
     ///   path;
     /// - the `XDG_DATA_HOME` environment variable is set, but its value represents invalid
-    ///   unicode.
+    ///   unicode;
+    /// - `file` was **not** found inside the _user-specific_ XDG data directory and:
+    ///     - the `XDG_DATA_DIRS` environment variable is set, but one (or more) path(s) in the
+    ///       colon separated value represents a relative path;
+    ///     - the `XDG_DATA_DIRS` environment variable is set, but its value represents invalid
+    ///       unicode.
     ///
     /// # Examples
     ///

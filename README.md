@@ -296,3 +296,109 @@ for each of the system-wide, preference-ordered, XDG app subdirectories:
 > should be set to a colon separated value, where each entry represents a
 > path to a system XDG directory. The order denotes the importace: the first
 > directory the most important, the last directory the least important.
+
+## Search user-specific XDG files
+
+The following example illustrates how to search a file inside XDG **config**
+directories:
+```rust
+use microxdg::{Xdg, XdgError};
+
+fn main() -> Result<(), XdgError> {
+    let xdg = Xdg::new()?;
+    match xdg.search_config_file("file_name")? {
+        Some(config_file) => {
+            /* Do something with `config_file`... */
+        }
+        None => {
+            /* Do something else... */
+        }
+    }
+
+    Ok(())
+}
+```
+
+The `Xdg::search_config_file` method returns an `Option<PathBuf>`. Its variants
+are:
+- `Some(file)`, in the case the file was found inside one of the XDG
+  configuration directories. The lookup order is:
+  - _user-specific_ XDG configuration directory specified by the
+    `XDG_CONFIG_HOME` environment variable if available, or the corresponding
+    fallbacks if such environment variable is not set or set to an empty value;
+  - _system-wide_ XDG configuration directories specified by the
+    `XDG_CONFIG_DIRS` environment variable if available, or the corresponding
+    fallback if such environment variable is not set or set to an empty value;
+- `None`, in the case the file was **not** found inside any of the XDG
+  configuration directories (either _user-specific_ or _system-wide_).
+
+Also, it returns an error (`XdgError`) in the following cases:
+- the `XDG_CONFIG_HOME` environment variable is set, but its value represents
+  a relative path;
+- the `XDG_CONFIG_HOME` environment variable is set, but its value represents
+  invalid unicode;
+- the file was **not** found inside the _user-specific_ XDG data directory and:
+  - the `XDG_CONFIG_DIRS` environment variable is set, but one (or more) path(s)
+    in the colon separated value represents a relative path;
+  - the `XDG_CONFIG_DIRS` environment variable is set, but its value represents
+    invalid unicode.
+
+Analogous methods are available to search files inside the other XDG
+directories:
+- `Xdg::search_cache_file`;
+- `Xdg::search_data_file`;
+- `Xdg::search_state_file`.
+
+## Search user-specific XDG application files
+
+The following example illustrates how to search a file inside XDG **data**
+application subdirectories:
+```rust
+use microxdg::{XdgApp, XdgError};
+
+fn main() -> Result<(), XdgError> {
+    let xdg = XdgApp::new("app_name");
+    match xdg.search_app_data_file("file_name")? {
+        Some(app_data_file) => {
+            /* Do something with `app_data_file` ... */
+        }
+        None => {
+            /* Do something else... */
+        }
+    }
+
+    Ok(())
+}
+```
+
+The `Xdg::search_app_data_file` method returns an `Option<PathBuf>`. Its
+variants are:
+- `Some(app_data_file)`, in the case the file was found inside one of the XDG
+  data subdirectories. The lookup order is:
+  - _user-specific_ XDG application data subdirectory specified by the
+    `XDG_DATA_HOME` environment variable if available, or falls back to
+    `$HOME/.local/share/app_name` if such environment variable is not set or
+    set to an empty value;
+  - _system-wide_ XDG configuration directories specified by the
+    `XDG_CONFIG_DIRS` environment variable if available, or falls back to
+    `/usr/local/share/app_name:/usr/share/app_name` if such variable
+    environment is not set or set to an empty value;
+- `None`, in the case the file was **not** found inside any of the XDG
+  configuration directories (either _user-specific_ or _system-wide_).
+
+Also, it returns an error (`XdgError`) in the following cases:
+- the `XDG_DATA_HOME` environment variable is set, but its value represents
+  a relative path;
+- the `XDG_DATA_HOME` environment variable is set, but its value represents
+  invalid unicode;
+- the file was **not** found inside the _user-specific_ XDG data directory and:
+  - the `XDG_DATA_DIRS` environment variable is set, but one (or more) path(s)
+    in the colon separated value represents a relative path;
+  - the `XDG_DATA_DIRS` environment variable is set, but its value represents
+    invalid unicode.
+
+Analogous methods are available to search files inside the other XDG
+application subdirectories:
+- `Xdg::search_app_cache_file`;
+- `Xdg::search_app_config_file`;
+- `Xdg::search_app_state_file`.
