@@ -1266,6 +1266,13 @@ mod test {
         env::set_var("HOME", "/home/user");
         env::set_var("USER", "user");
 
+        let xdg = Xdg::new()?;
+
+        assert_eq!(None, xdg.search_cache_file("microxdg")?);
+        assert_eq!(None, xdg.search_config_file("microxdg")?);
+        assert_eq!(None, xdg.search_data_file("microxdg")?);
+        assert_eq!(None, xdg.search_state_file("microxdg")?);
+
         let mut tmp_dir_builder = tempfile::Builder::new();
         tmp_dir_builder.prefix("microxdg");
         tmp_dir_builder.rand_bytes(4);
@@ -1289,7 +1296,6 @@ mod test {
         let data_file = tmp_file_builder.tempfile_in(data_home.path())?;
         let state_file = tmp_file_builder.tempfile_in(state_home.path())?;
 
-        let xdg = Xdg::new()?;
         assert_eq!(
             Some(cache_file.path().into()),
             xdg.search_cache_file("microxdg")?,

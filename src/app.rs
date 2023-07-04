@@ -1886,6 +1886,13 @@ mod test {
         env::set_var("HOME", "/home/user");
         env::set_var("USER", "user");
 
+        let xdg = XdgApp::new("app_name")?;
+
+        assert_eq!(None, xdg.search_app_cache_file("microxdg")?);
+        assert_eq!(None, xdg.search_app_config_file("microxdg")?);
+        assert_eq!(None, xdg.search_app_data_file("microxdg")?);
+        assert_eq!(None, xdg.search_app_state_file("microxdg")?);
+
         let mut tmp_dir_builder = tempfile::Builder::new();
         tmp_dir_builder.prefix("microxdg");
         tmp_dir_builder.rand_bytes(4);
@@ -1917,7 +1924,6 @@ mod test {
         let data_file = tmp_file_builder.tempfile_in(app_data_dir)?;
         let state_file = tmp_file_builder.tempfile_in(app_state_dir)?;
 
-        let xdg = XdgApp::new("app_name")?;
         assert_eq!(
             Some(cache_file.path().into()),
             xdg.search_app_cache_file("microxdg")?,
@@ -1961,27 +1967,6 @@ mod test {
             Some(config_file.path().into()),
             xdg.search_config_file("microxdg")?
         );
-
-        Ok(())
-    }
-
-    #[test]
-    fn search_app_sys_file() -> Result<(), XdgError> {
-        env::remove_var("XDG_CACHE_HOME");
-        env::remove_var("XDG_CONFIG_HOME");
-        env::remove_var("XDG_DATA_HOME");
-        env::remove_var("XDG_STATE_HOME");
-
-        env::set_var("HOME", "/home/user");
-        env::set_var("USER", "user");
-
-        let mut tmp_dir_builder = tempfile::Builder::new();
-        tmp_dir_builder.prefix("microxdg");
-        tmp_dir_builder.rand_bytes(4);
-
-        let mut tmp_file_builder = tempfile::Builder::new();
-        tmp_file_builder.prefix("microxdg");
-        tmp_file_builder.rand_bytes(0);
 
         Ok(())
     }
