@@ -23,28 +23,24 @@ pub enum XdgError {
 }
 
 impl fmt::Display for XdgError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            XdgError::HomeNotFound => write!(
-                f,
-                "unable to locate user's home directory, \
-                    neither HOME or USER environment variables set"
+            XdgError::HomeNotFound => formatter.write_str(
+                "Unable to retrieve user's home directory, \
+                neither HOME nor USER environment variable set",
             ),
-            XdgError::RelativePath { env_var_key, path } => write!(
-                f,
-                "environment variable '{env_var_key}' contains a relative \
-                    path '{path}' (paths in XDG environment variables must \
-                    be asbolute)",
+            XdgError::RelativePath { env_var_key, path } => formatter.write_fmt(format_args!(
+                "The `{env_var_key}` environment variable contains a relative \
+                path, while paths in XDG environment variables must be asbolute: `{path}`",
                 path = path.display()
-            ),
+            )),
             XdgError::InvalidUnicode {
                 env_var_key,
                 env_var_val,
-            } => write!(
-                f,
-                "environment variable '{env_var_key}' contains invalid unicode \
-                    {env_var_val:?}",
-            ),
+            } => formatter.write_fmt(format_args!(
+                "The `{env_var_key}` environment variable contains invalid unicode: \
+                {env_var_val:?}",
+            )),
         }
     }
 }
@@ -61,14 +57,13 @@ mod test {
     #[test]
     fn display_error() -> Result<(), Box<dyn Error>> {
         assert_eq!(
-            "unable to locate user's home directory, neither HOME or USER \
-                environment variables set",
+            "Unable to retrieve user's home directory, \
+            neither HOME nor USER environment variable set",
             XdgError::HomeNotFound.to_string()
         );
         assert_eq!(
-            "environment variable 'XDG_CONFIG_HOME' contains a relative path \
-                './config' (paths in XDG environment variables must \
-                be asbolute)",
+            "The `XDG_CONFIG_HOME` environment variable contains a relative \
+            path, while paths in XDG environment variables must be asbolute: `./config`",
             XdgError::RelativePath {
                 env_var_key: "XDG_CONFIG_HOME",
                 path: PathBuf::from("./config"),
@@ -76,8 +71,8 @@ mod test {
             .to_string(),
         );
         assert_eq!(
-            "environment variable 'XDG_CONFIG_HOME' contains invalid unicode \
-                \"\\xF0\\x90\\x80g\"",
+            "The `XDG_CONFIG_HOME` environment variable contains invalid unicode: \
+            \"\\xF0\\x90\\x80g\"",
             XdgError::InvalidUnicode {
                 env_var_key: "XDG_CONFIG_HOME",
                 env_var_val: OsStr::from_bytes(&INVALID_UNICODE_BYTES).to_os_string(),

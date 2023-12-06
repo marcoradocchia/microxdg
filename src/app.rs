@@ -421,7 +421,7 @@ impl XdgApp {
     /// # use microxdg::{XdgApp, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = XdgApp::new("app_name")?;
-    /// let config_dir = xdg.config()?;
+    /// let app_config_dir = xdg.app_config()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -453,7 +453,7 @@ impl XdgApp {
     /// # use microxdg::{XdgApp, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = XdgApp::new("app_name")?;
-    /// let data_dir = xdg.data()?;
+    /// let app_data_dir = xdg.app_data()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -485,7 +485,7 @@ impl XdgApp {
     /// # use microxdg::{XdgApp, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = XdgApp::new("app_name")?;
-    /// let state_dir = xdg.state()?;
+    /// let app_state_dir = xdg.app_state()?;
     /// # Ok(())
     /// # }
     /// ```
