@@ -5,9 +5,9 @@
   ![GitHub open issues](https://img.shields.io/github/issues-raw/marcoradocchia/microxdg?color=%23d8a657&logo=github)
   ![GitHub open pull requests](https://img.shields.io/github/issues-pr-raw/marcoradocchia/microxdg?color=%2389b482&logo=github)
   ![GitHub sponsors](https://img.shields.io/github/sponsors/marcoradocchia?color=%23d3869b&logo=github)
+  ![GitHub license](https://img.shields.io/github/license/marcoradocchia/microxdg?color=%23e78a4e)
   ![Crates.io downloads](https://img.shields.io/crates/d/microxdg?label=crates.io%20downloads&logo=rust)
   ![Crates.io version](https://img.shields.io/crates/v/microxdg?logo=rust&color=%23d8a657)
-  ![GitHub license](https://img.shields.io/github/license/marcoradocchia/microxdg?color=%23e78a4e)
 </div>
 
 An **XDG Base Directory Specification** Rust library that aims to be
@@ -26,7 +26,7 @@ cargo add microxdg
 Alternatively, add the following line in the `[dependencies]` section of your
 `Cargo.toml`:
 ```toml
-microxdg = "0.1.0"
+microxdg = "0.1.1"
 ```
 
 ## API
