@@ -141,16 +141,16 @@ use microxdg::{XdgApp, XdgError};
 
 fn main() -> Result<(), XdgError> {
     let xdg = Xdg::new()?;
-    let config_file = xdg.cache_file("file_name");
+    let cache_file = xdg.cache_file("file_name")?;
 
-    /* Do something with `config_file`... */
+    /* Do something with `cache_file`... */
 
     Ok(())
 }
 ```
 
 The `Xdg::cache_file` method returns the path to a _user-specific_ XDG cache
-file. It uses the XDG directory specified by the `XDG_CONFIG_HOME`
+file. It uses the XDG directory specified by the `XDG_CACHE_HOME`
 environment variable, if available. Falls back to `$HOME/.cache/file_name` or
 `/home/$USER/.cache/file_name` if such environment variable is not set, or is
 set to an empty value.
@@ -162,7 +162,7 @@ Also, it returns an error (`XdgError`) in the following cases:
   invalid unicode.
 
 Analogous methods are available other XDG directories:
-- `Xdg::cache_file`;
+- `Xdg::config_file`;
 - `Xdg::data_file`;
 - `Xdg::state_file`.
 
@@ -178,7 +178,7 @@ use microxdg::{XdgApp, XdgError};
 
 fn main() -> Result<(), XdgError> {
     let xdg = XdgApp::new("app_name")?;
-    let app_state_file = xdg.app_state_file("file_name");
+    let app_state_file = xdg.app_state_file("file_name")?;
 
     /* Do something with `app_state_file`... */
 
