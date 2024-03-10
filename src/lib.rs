@@ -1005,7 +1005,7 @@ impl Xdg {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{env, error::Error, ffi::OsStr, os::unix::prelude::OsStrExt, path::Path};
+    use std::{error::Error, ffi::OsStr, os::unix::prelude::OsStrExt};
 
     const INVALID_UNICODE_BYTES: [u8; 4] = [0xF0, 0x90, 0x80, 0x67];
 
