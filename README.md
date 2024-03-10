@@ -26,7 +26,7 @@ cargo add microxdg
 Alternatively, add the following line in the `[dependencies]` section of your
 `Cargo.toml`:
 ```toml
-microxdg = "0.1.1"
+microxdg = "0.1.2"
 ```
 
 ## API
