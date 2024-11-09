@@ -26,7 +26,7 @@ cargo add microxdg
 Alternatively, add the following line in the `[dependencies]` section of your
 `Cargo.toml`:
 ```toml
-microxdg = "0.1.2"
+microxdg = "0.2.0"
 ```
 
 ## API
@@ -39,6 +39,8 @@ The `microxdg` API consists in two main `structs`:
 > **Note**: the latter's associated functions and methods are a superset of
 > those implemented for `Xdg`. For this reason, it should be preferred only in
 > case you need access to application-specific subdirectories.
+
+For the complete documentation, consult <https://docs.rs/microxdg/latest>.
 
 ### Retrieve user-specific XDG directories
 
@@ -73,8 +75,8 @@ in the specification:
 - `Xdg::cache`;
 - `Xdg::data`;
 - `Xdg::state`;
-- `Xdg::runtime`;
-- `Xdg::exec`.
+- `Xdg::bin`;
+- `Xdg::runtime`.
 
 Below a table illustrating the environment variable and corresponding fallbacks
 for each of the XDG directories:
@@ -85,8 +87,8 @@ for each of the XDG directories:
 | _Configuration_    | `XDG_CONFIG_HOME`    | `$HOME/.config`        | `/home/$USER/.config`      |
 | _Data_             | `XDG_DATA_HOME`      | `$HOME/.local/share`   | `/home/$USER/.local/share` |
 | _State_            | `XDG_STATE_HOME`     | `$HOME/.local/state`   | `/home/$USER/.local/state` |
+| _Bin_              | `XDG_BIN_HOME`       | `$HOME/.local/bin`     | `/home/$USER/.local/bin`   |
 | _Runtime_          | `XDG_RUNTIME_DIR`    | -                      | -                          |
-| _Executable_       | -                    | `$HOME/.local/bin`     | `/home/$USER/.local/bin`   |
 
 ### Retrieve user-specific XDG application subdirectories
 
@@ -164,7 +166,8 @@ Also, it returns an error (`XdgError`) in the following cases:
 Analogous methods are available other XDG directories:
 - `Xdg::config_file`;
 - `Xdg::data_file`;
-- `Xdg::state_file`.
+- `Xdg::state_file`;
+- `Xdg::bin_file`.
 
 > **Note**: these methods do not guarantee either the path exists or points to
 > a regular file.
@@ -347,7 +350,8 @@ Analogous methods are available to search files inside the other XDG
 directories:
 - `Xdg::search_cache_file`;
 - `Xdg::search_data_file`;
-- `Xdg::search_state_file`.
+- `Xdg::search_state_file`;
+- `Xdg::search_bin_file`.
 
 ## Search user-specific XDG application files
 
