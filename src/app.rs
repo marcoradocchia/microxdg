@@ -803,7 +803,7 @@ impl XdgApp {
     /// # Exapmles
     ///
     /// ```rust
-    /// # use microxdg::{Xdg, XdgError};
+    /// # use microxdg::{XdgApp, XdgError};
     /// # fn main() -> Result<(), XdgError> {
     /// let xdg = XdgApp::new("app_name")?;
     /// let bin_file = xdg.bin_file("file")?;
@@ -1834,7 +1834,7 @@ mod test {
         env::set_var("XDG_CONFIG_HOME", config_home.path());
         env::set_var("XDG_DATA_HOME", data_home.path());
         env::set_var("XDG_STATE_HOME", state_home.path());
-        env::set_var("XDG_BIN_HOME", state_home.path());
+        env::set_var("XDG_BIN_HOME", bin_home.path());
 
         let mut tmp_file_builder = tempfile::Builder::new();
         tmp_file_builder.prefix("microxdg");
