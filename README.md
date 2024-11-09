@@ -26,7 +26,7 @@ cargo add microxdg
 Alternatively, add the following line in the `[dependencies]` section of your
 `Cargo.toml`:
 ```toml
-microxdg = "0.1.2"
+microxdg = "0.2.0"
 ```
 
 ## API
@@ -39,6 +39,8 @@ The `microxdg` API consists in two main `structs`:
 > **Note**: the latter's associated functions and methods are a superset of
 > those implemented for `Xdg`. For this reason, it should be preferred only in
 > case you need access to application-specific subdirectories.
+
+For the complete documentation, consult <https://docs.rs/microxdg/latest>.
 
 ### Retrieve user-specific XDG directories
 

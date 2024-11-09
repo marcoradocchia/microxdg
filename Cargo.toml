@@ -2,7 +2,7 @@
 name = "microxdg"
 description = "An XDG Base Directory Specification library."
 authors = ["Marco Radocchia <marco.radocchia@outlook.com"]
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.70.0"
 categories = ["config", "filesystem"]
